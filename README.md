@@ -1,5 +1,5 @@
 # docking-plp-openCL
-OpenCL implementation of a docking algorithm based on plp fitness function.
+OpenCL implementation of a docking algorithm based on PLP fitness function [1].
 
 ## Compile and run:
 
@@ -27,3 +27,7 @@ module load CMake
 PATH: ninja, cmake, git
 
 windows_build_w_ninja_run.bat
+
+
+## References
+**Empirical Scoring Functions for Advanced Protein−Ligand Docking with PLANTS**, Oliver Korb, Thomas Stützle, and Thomas E. Exner. Journal of Chemical Information and Modeling 2009 49 (1), 84-96, DOI: 10.1021/ci800298z.
