@@ -153,7 +153,7 @@ class Data {
    void initSeed();
    void initLigandAtomPairsForClash();
 
-    void saveResultsToFile(std::string path);
+    void saveResultsToFile(std::string path, int outputOnlyBestN);
     void saveTimersToFile(std::string path);
     void saveScoresToFile(std::string path);
 

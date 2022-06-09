@@ -549,7 +549,7 @@ Data::Data(std::string file, Batch& batchRef) : batch(batchRef) {
 Data::~Data() {
 
     // Write result file
-    saveResultsToFile(batch.outputPath + "/");
+    saveResultsToFile(batch.outputPath + "/", batch.outputOnlyBestN);
 
     // Write timers
     if(batch.timeKernels == 1) {
@@ -579,7 +579,7 @@ Data::~Data() {
     delete[] rngStates;
 }
 
-void Data::saveResultsToFile(std::string path) {
+void Data::saveResultsToFile(std::string path, int outputOnlyBestN) {
 
     // get current date:
     time_t curtime;
@@ -609,8 +609,40 @@ void Data::saveResultsToFile(std::string path) {
                              "Mt ", "Ds ", "Rg ", "Cn ", "Nh ", "Fl ", "Mc ", "Lv ", "Ts ",
                              "Og "};
 
-    // For all runs
+    // Sort
+    int* iSorted = new int[parameters.nruns];
     for (int i = 0; i < parameters.nruns; i++) {
+        iSorted[i] = i;
+    }
+
+    int outLength = parameters.nruns;
+
+    if(outputOnlyBestN != 0) {
+
+        outLength = outputOnlyBestN;
+
+        float tempRW;
+        int tempI;
+        for (int i = 0; i < parameters.nruns-1; i++) {
+            for (int j = 0; j < parameters.nruns-i-1; j++) {
+                if (score[j] > score[j+1]) {
+                    // Swap Values
+                    tempRW = score[j];
+                    score[j] = score[j+1];
+                    score[j+1] = tempRW;
+                    // Swap Indexes
+                    tempI = iSorted[j];
+                    iSorted[j] = iSorted[j+1];
+                    iSorted[j+1] = tempI;
+                }
+            }
+        }
+    }
+
+    // For all runs
+    for (int i = 0; i < parameters.nruns && i < outLength; i++) {
+
+        int sortedI = iSorted[i];
 
         // Header (3 lines)
         fprintf(fout,"header:name\nheader:software\nheader:notes\n");
@@ -620,7 +652,7 @@ void Data::saveResultsToFile(std::string path) {
 
         // Atoms block
         for(int j=0; j < parameters.ligandNumAtoms; j++){
-            int offset = i * parameters.ligandNumAtoms;
+            int offset = sortedI * parameters.ligandNumAtoms;
             fprintf(fout, "%10.4f%10.4f%10.4f %3s 0  0  0  0  0  0\n",ligandAtomsSmallGlobalAll[offset+j].x, ligandAtomsSmallGlobalAll[offset+j].y, ligandAtomsSmallGlobalAll[offset+j].z, elements[ligandAtomsSmallGlobalAll[offset+j].atomicNo-1]);
         }
 
@@ -642,6 +674,8 @@ void Data::saveResultsToFile(std::string path) {
 
     // close
     fclose(fout);
+
+    delete[] iSorted;
 }
 
 void Data::saveTimersToFile(std::string path) {
