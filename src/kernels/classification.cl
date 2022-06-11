@@ -16,13 +16,15 @@ inline int getCLASHclass(int triposType) {
     return CLASH_CLASSIFICATION_TABLE[triposType];
 }
 
+// Returns squared distance!
 inline float getRclash(int class1, int class2, int numBondsBetween) {
-    return ( (float)( (class1 == PLP_CLASH_CLASS_1 && class2 == PLP_CLASH_CLASS_1) ||
+
+    float distance = ( (float)( (class1 == PLP_CLASH_CLASS_1 && class2 == PLP_CLASH_CLASS_1) ||
 
                        (class1 == PLP_CLASH_CLASS_2 && class2 == PLP_CLASH_CLASS_3 && numBondsBetween == 3) ||
                        (class1 == PLP_CLASH_CLASS_3 && class2 == PLP_CLASH_CLASS_2 && numBondsBetween == 3)
             ) * 2.5f) +
-            ( (float)((class1 == PLP_CLASH_CLASS_2 && class2 == PLP_CLASH_CLASS_3 && numBondsBetween > 3) ||
+            ( (float)( (class1 == PLP_CLASH_CLASS_2 && class2 == PLP_CLASH_CLASS_3 && numBondsBetween > 3) ||
                        (class1 == PLP_CLASH_CLASS_3 && class2 == PLP_CLASH_CLASS_2 && numBondsBetween > 3) ||
 
                        (class1 == PLP_CLASH_CLASS_1 && class2 == PLP_CLASH_CLASS_2 && numBondsBetween == 3) ||
@@ -32,13 +34,15 @@ inline float getRclash(int class1, int class2, int numBondsBetween) {
                        (class1 == PLP_CLASH_CLASS_3 && class2 == PLP_CLASH_CLASS_1 && numBondsBetween == 3) ||
                        (class1 == PLP_CLASH_CLASS_3 && class2 == PLP_CLASH_CLASS_3 && numBondsBetween == 3)
             ) * 2.75f) +
-            ( (float)((class1 == PLP_CLASH_CLASS_1 && class2 == PLP_CLASH_CLASS_2 && numBondsBetween > 3) ||
+            ( (float)( (class1 == PLP_CLASH_CLASS_1 && class2 == PLP_CLASH_CLASS_2 && numBondsBetween > 3) ||
                        (class1 == PLP_CLASH_CLASS_1 && class2 == PLP_CLASH_CLASS_3 && numBondsBetween > 3) ||
                        (class1 == PLP_CLASH_CLASS_2 && class2 == PLP_CLASH_CLASS_1 && numBondsBetween > 3) ||
                        (class1 == PLP_CLASH_CLASS_2 && class2 == PLP_CLASH_CLASS_2 && numBondsBetween > 3) ||
                        (class1 == PLP_CLASH_CLASS_3 && class2 == PLP_CLASH_CLASS_1 && numBondsBetween > 3) ||
                        (class1 == PLP_CLASH_CLASS_3 && class2 == PLP_CLASH_CLASS_3 && numBondsBetween > 3)
             ) * 3.0f);
+
+    return distance * distance;
 }
 
 

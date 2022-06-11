@@ -34,6 +34,11 @@ float lengthNorm3(float* vector) {
    return sqrt(vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2]);
 }
 
+float lengthNormSq3(float* vector) {
+    //Returns squared magnitude of vector (or distance from origin)
+   return vector[0]*vector[0]+vector[1]*vector[1]+vector[2]*vector[2];
+}
+
 float dotProduct3(float* v1, float* v2) {
     return v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2];
 }
