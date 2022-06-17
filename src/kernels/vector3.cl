@@ -100,6 +100,13 @@ float distance2Points3(float* v1, float* v2) {
     return lengthNorm3((float*)difference);
 }
 
+// Returns squared distance between two coords
+float distance2PointsSq3(float* v1, float* v2) {
+    float difference[3];
+    subtract2Vectors3(v2, v1, (float*)difference);
+    return lengthNormSq3((float*)difference);
+}
+
 // 1 = VALID, 0 = NOT VALID
 int isPointInsideCuboid3(float* p, float* min, float* max) {
     return ( p[0] >=min[0] && p[0] <= max[0] &&

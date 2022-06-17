@@ -115,9 +115,9 @@ float PLPclash(global AtomGPUsmall* atom1, global AtomGPUsmall* atom2, float rCl
     atom2COORD[1] = atom2->y;
     atom2COORD[2] = atom2->z;
 
-    float r = distance2Points3((float*)atom1COORD, (float*)atom2COORD);
-    
-    return ( (float)( r < rClash) * ( ( (rClash*rClash - r*r) / (rClash*rClash) ) * 50.0f ));
+    float r = distance2PointsSq3((float*)atom1COORD, (float*)atom2COORD);
+    // r and rClash are squared
+    return ( (float)( r < rClash) * ( ( (rClash - r) / (rClash) ) * 50.0f ));
 }
 
 /*
