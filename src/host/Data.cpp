@@ -9,12 +9,16 @@
 #include <algorithm>
 #include <time.h>
 #include <cmath>
+#include <limits.h>
 
 #define TIMER_START(t_t) if(batch.timeKernels==1){t_t=omp_get_wtime();}
 #define TIMER_END(t_t, tot_t) if(batch.timeKernels==1){tot_t+=omp_get_wtime()-t_t;}
 
 #define CAVITY_BORDER 0.0f
 #define GOOD_RECEPTORS_BORDER 5.5f
+
+#define TRIPOS_TYPE_H 19
+#define TRIPOS_TYPE_H_P 20
 
 void Data::initParameres(Header& header, LigandFlex& ligandFlex, GAParams& gaParams, CavityInfo& cavityInfo, uint32_t numDihedralElements, GridProps& gridProps) {
 
@@ -262,22 +266,25 @@ void Data::initSeed() {
 	}
 }
 
-int index2D(int l, int x, int y) {
+inline int index2D(int l, int x, int y) {
     return l * x + y;
 }
 
 void Data::initLigandAtomPairsForClash() {
-    const int maxPathLen = 99999999;
+    const int maxPathLen = INT_MAX / 2; // "/ 2": so we can add to it.
     int l = parameters.ligandNumAtoms;
     int x,y;
     
+    // 2D arrays:
     int* connectionsTable = new int[l * l]();// Init to zero!
     int* shortestPathTable = new int[l * l];
-    
-    // set to big num for graph alg
+    short* isDihedralTable = new short[l * l]();// Init to zero!
+
+    // Set entire 2D array to maxPathLen
     for (int i = 0; i < l * l; i++) {
         shortestPathTable[i] = maxPathLen;
     }
+    // Set [i][i] to 0 (each to oneself distance = 0)
     for (int i = 0; i < l; i++) {
         shortestPathTable[i * l + i] = 0;
     }
@@ -304,18 +311,18 @@ void Data::initLigandAtomPairsForClash() {
         }
     }
 
-    // FIXME: THIS IS A DISASTER: (NAIVE NAIVE GRAPH ALGORITHM) THE REST OF THE FUNCTION
+    // FIXME: improve graph algorithm
 
-    // for every atom
-    for (int a = 0; a < l; a++) {
+    // for every atom, except last
+    for (int a = 0; a < l - 1; a++) {
         // iteration (numAt - 1)
         for (int i = 0; i < l - 1; i++) {
-            // for every atom
+            // for every atom (a = a2 is a starting point in the 1st iteration)
             for (int a2 = 0; a2 < l; a2++) {
                 // if we can reach
                 if (shortestPathTable[index2D(l, a, a2)] != maxPathLen) {
-                    // for every atom connection
-                    for (int c = 0; c < l; c++) {
+                    // for atom connection > a
+                    for (int c = a + 1; c < l; c++) {
                         // for main atom a
                         // iteration i
                         // current atom a2
@@ -323,18 +330,23 @@ void Data::initLigandAtomPairsForClash() {
 
                         // there is bond
                         if (connectionsTable[index2D(l, a2, c)] > 0) {
-                            int addPath;
-                            // if Dihedral bond then count it, else not
-                            if (connectionsTable[index2D(l, a2, c)] == 1) {
-                                addPath = 1;
-                            } else {
-                                addPath = 0;
-                            }
 
-                            // calc path and check if shorter
-                            int pathLen = shortestPathTable[index2D(l, a, a2)] + addPath;
+                            // Calculate path length and check if shorter
+                            int pathLen = shortestPathTable[index2D(l, a, a2)] + 1;
                             if (pathLen < shortestPathTable[index2D(l, a, c)]) {
                                 shortestPathTable[index2D(l, a, c)] = pathLen;
+                                shortestPathTable[index2D(l, c, a)] = pathLen;
+
+                                // if Dihedral bond then mark it, otherwise reset it.
+                                if (connectionsTable[index2D(l, a2, c)] == 1 || // current bond is dihedral
+                                    isDihedralTable[index2D(l, a, a2)] == 1) {   // there was a dihedral bond at some point
+
+                                    isDihedralTable[index2D(l, a, c)] = 1;
+                                    isDihedralTable[index2D(l, c, a)] = 1;
+                                } else {
+                                    isDihedralTable[index2D(l, a, c)] = 0;
+                                    isDihedralTable[index2D(l, c, a)] = 0;
+                                }
                             } 
                         }
                     }
@@ -343,40 +355,51 @@ void Data::initLigandAtomPairsForClash() {
         }
     }
 
+    AtomPairIndex* atomPairIndexes = new AtomPairIndex[l * (l-1) / 2];// max. num. of pairs.
+
     // now check pairs to add to, only above diagonal
     int numPairs = 0;
     for (int i = 0; i < l; i++) {
         for (int j = i + 1; j < l; j++) {
+
+            if (shortestPathTable[index2D(l, i, j)] == maxPathLen) {
+                dbglWE(__FILE__, __FUNCTION__, __LINE__, "Atom with index: ("+std::to_string(i)+") and index("+std::to_string(j)+") not reachable in graph aka. path=maxPathLen (atomID = index + 1), possible error.");
+            }
             
-            // if path > 2, add pair
-            if (shortestPathTable[index2D(l, i, j)] > 2) {
+            // if path > 2, there is at least one dihedral and no light atom (aka. Hydrogen), add pair
+            if (shortestPathTable[index2D(l, i, j)] > 2 &&
+                isDihedralTable[index2D(l, i, j)] == 1 &&
+                ligandAtoms[i].triposType != TRIPOS_TYPE_H && ligandAtoms[i].triposType != TRIPOS_TYPE_H_P &&
+                ligandAtoms[j].triposType != TRIPOS_TYPE_H && ligandAtoms[j].triposType != TRIPOS_TYPE_H_P) {
+                
+                atomPairIndexes[numPairs].i = i;
+                atomPairIndexes[numPairs].j = j;
                 numPairs++;
             }
         }
     }
 
     parameters.numLigandAtomPairsForClash = numPairs;
+    int numPairsCheck = 1;
     if (numPairs == 0) {
         numPairs = 1;
+        numPairsCheck = 0;
     }
     ligandAtomPairsForClash = new LigandAtomPairsForClash[numPairs];
     ligandAtomPairsForClashSize = sizeof(LigandAtomPairsForClash) * numPairs;
 
-    int temp = 0;
-    for (int i = 0; i < l; i++) {
-        for (int j = i + 1; j < l; j++) {
-            
-            // if path > 2, add pair
-            if (shortestPathTable[index2D(l, i, j)] > 2) {
-                ligandAtomPairsForClash[temp].numBondsBetween = shortestPathTable[index2D(l, i, j)];
-                ligandAtomPairsForClash[temp].atom1ID = i + 1;
-                ligandAtomPairsForClash[temp].atom2ID = j + 1;
-                temp++;
-            }
+    if (numPairsCheck == 1) {
+        for (int i = 0; i < numPairs; i++) {
+            ligandAtomPairsForClash[i].numBondsBetween = shortestPathTable[index2D(l, atomPairIndexes[i].i, atomPairIndexes[i].j)];
+            ligandAtomPairsForClash[i].atom1ID = atomPairIndexes[i].i + 1;
+            ligandAtomPairsForClash[i].atom2ID = atomPairIndexes[i].j + 1;
         }
     }
+
     delete[] connectionsTable;
     delete[] shortestPathTable;
+    delete[] isDihedralTable;
+    delete[] atomPairIndexes;
 }
 
 Data::Data(std::string file, Batch& batchRef) : batch(batchRef) {

@@ -140,6 +140,11 @@ typedef union{
 	cl_ulong res;
 } tyche_i_state;
 
+typedef struct AtomPairIndex_t {
+    int i;
+    int j;
+} AtomPairIndex;
+
 class Data {
 
    void initParameres(Header& header, LigandFlex& ligandFlex, GAParams& gaParams, CavityInfo& cavityInfo, uint32_t numDihedralElements, GridProps& gridProps);
