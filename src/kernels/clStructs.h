@@ -109,6 +109,7 @@ typedef struct parametersForGPU_t {
     DockingSiteInfo dockingSiteInfo;
     // numLigandAtomPairsForClash
     CL_STRUCT_INT numLigandAtomPairsForClash;
+    CL_STRUCT_INT numUniqueAtom1PairsForClash;
     // Grid
     GridGPU grid;
 } parametersForGPU;
@@ -184,6 +185,7 @@ typedef struct LigandAtomPairsForClash_t {
     CL_STRUCT_INT atom1ID;
     CL_STRUCT_INT atom2ID;
     CL_STRUCT_FLOAT rClash;
+    CL_STRUCT_INT numAtom1;
 } LigandAtomPairsForClash;
 
 #endif

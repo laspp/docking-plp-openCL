@@ -103,19 +103,14 @@ inline int CsiteReceptor(float x, float y, float z, constant parametersForGPU* p
     return (x > min[0] && x < max[0] && y > min[1] && y < max[1] && z > min[2] && z < max[2]);
 }
 
-float PLPclash(global AtomGPUsmall* atom1, global AtomGPUsmall* atom2, float rClash) {
-
-    float atom1COORD[3];
-    atom1COORD[0] = atom1->x;
-    atom1COORD[1] = atom1->y;
-    atom1COORD[2] = atom1->z;
+float PLPclash(float* atom1COORD, global AtomGPUsmall* atom2, float rClash) {
 
     float atom2COORD[3];
     atom2COORD[0] = atom2->x;
     atom2COORD[1] = atom2->y;
     atom2COORD[2] = atom2->z;
 
-    float r = distance2PointsSq3((float*)atom1COORD, (float*)atom2COORD);
+    float r = distance2PointsSq3(atom1COORD, (float*)atom2COORD);
     // r and rClash are squared
     return ( (float)( r < rClash) * ( ( (rClash - r) / (rClash) ) * 50.0f ));
 }

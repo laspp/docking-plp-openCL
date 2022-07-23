@@ -57,9 +57,22 @@ __kernel void kernelPLP(constant parametersForGPU* parameters,
         }
 
         // f_clash term:
-        for(int i=0; i < parameters->numLigandAtomPairsForClash; i++) {
-            
-            score += PLPclash(&(ligandAtomsOwn[ligandAtomPairsForClash[i].atom1ID - 1]), &(ligandAtomsOwn[ligandAtomPairsForClash[i].atom2ID - 1]), ligandAtomPairsForClash[i].rClash);
+        int currentAtom = 0;
+        for(int i=0; i < parameters->numUniqueAtom1PairsForClash; i++) {
+
+            int numAtom1 = ligandAtomPairsForClash[currentAtom].numAtom1;
+
+            global AtomGPUsmall* atom1 = &(ligandAtomsOwn[ligandAtomPairsForClash[currentAtom].atom1ID - 1]);
+
+            float atom1COORD[3];
+            atom1COORD[0] = atom1->x;
+            atom1COORD[1] = atom1->y;
+            atom1COORD[2] = atom1->z;
+
+            for(int a = currentAtom; a < currentAtom + numAtom1; a++) {
+                score += PLPclash((float*)atom1COORD, &(ligandAtomsOwn[ligandAtomPairsForClash[a].atom2ID - 1]), ligandAtomPairsForClash[a].rClash);
+            }
+            currentAtom += numAtom1;
         }
 
         global float* individual = getIndividual(parameters->popMaxSize, runID, individualID, parameters->chromStoreLen, globalPopulations);

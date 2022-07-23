@@ -380,6 +380,7 @@ void Data::initLigandAtomPairsForClash() {
     }
 
     parameters.numLigandAtomPairsForClash = numPairs;
+    parameters.numUniqueAtom1PairsForClash = 0;
     int numPairsCheck = 1;
     if (numPairs == 0) {
         numPairs = 1;
@@ -394,6 +395,25 @@ void Data::initLigandAtomPairsForClash() {
             ligandAtomPairsForClash[i].atom1ID = atomPairIndexes[i].i + 1;
             ligandAtomPairsForClash[i].atom2ID = atomPairIndexes[i].j + 1;
         }
+
+        // Count so that Atom1 can be accessed only once when calculating PLPclash.
+        int currentAtom = 0;
+        int numUniqueAtom1 = 0;
+        while (currentAtom < numPairs) {
+            
+            int atom1 = currentAtom;
+            int atom1ID = ligandAtomPairsForClash[currentAtom].atom1ID;
+            int numAtom1 = 0;
+            while(ligandAtomPairsForClash[currentAtom + numAtom1].atom1ID == atom1ID) {
+                numAtom1++;
+            }
+            for(int a = currentAtom; a < currentAtom + numAtom1; a++) {
+                ligandAtomPairsForClash[a].numAtom1 = numAtom1;
+            }
+            currentAtom += numAtom1;
+            numUniqueAtom1++;
+        }
+        parameters.numUniqueAtom1PairsForClash = numUniqueAtom1;
     }
 
     delete[] connectionsTable;
