@@ -54,8 +54,14 @@ inline global float* getIndividual(int popMaxSize, int runID, int individualID, 
     return &(globalPopulations[runID * popMaxSize * chromStoreLen + chromStoreLen * individualID]);
 }
 
-inline global AtomGPUsmall* getAtomGPUsmall(int popMaxSize, int runID, int individualID, int ligandNumAtoms, global AtomGPUsmall* ligandAtomsSmallGlobalAll) {
-    return &(ligandAtomsSmallGlobalAll[runID * popMaxSize * ligandNumAtoms + ligandNumAtoms * individualID]);
+// New layout:
+// | pop_0 | pop_1 | ... | pop_n |
+// | ind_0_at_0 | ind_1_at_0 | ... | ind_m_at_0 | ind_0_at_1 | ...
+inline global AtomGPUsmall* getAtomGPUsmallBase(int popMaxSize, int runID, int individualID, int ligandNumAtoms, global AtomGPUsmall* ligandAtomsSmallGlobalAll) {
+    return &(ligandAtomsSmallGlobalAll[runID * popMaxSize * ligandNumAtoms + individualID]);
+}
+inline global AtomGPUsmall* getAtomGPUsmallFromBase(int popMaxSize, int atomIndex, global AtomGPUsmall* ligandAtomsSmallGlobalBase) {
+    return &(ligandAtomsSmallGlobalBase[atomIndex * popMaxSize]);
 }
 
 // Scoring:

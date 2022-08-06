@@ -195,6 +195,7 @@ public:
 
     AtomGPUsmall* ligandAtomsSmallGlobalAll;
     uint32_t ligandAtomsSmallGlobalAllSize;
+    uint32_t ligandAtomsSmallResultSize;
 
     DihedralRefDataGPU* dihedralRefData;
     uint32_t dihedralRefDataSize;

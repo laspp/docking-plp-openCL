@@ -54,31 +54,26 @@ float Dihedral(global AtomGPUsmall* m_atom1, global AtomGPUsmall* m_atom2, globa
     return phi * 180.0f / M_PI;
 }
 
-global AtomGPUsmall* getAtomGPUsmallFromID(global AtomGPUsmall* ligandAtoms,int id) {
+global AtomGPUsmall* getAtomGPUsmallFromID(global AtomGPUsmall* ligandAtoms,int id, int popMaxSize) {
     int i = id - 1;
-    if(ligandAtoms[i].id == id) {
-        return &(ligandAtoms[i]);
+    global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(popMaxSize, i, ligandAtoms);
+    if(tempAtom->id == id) {
+        return tempAtom;
     } else {
-        printf("[SyncToModel] [getAtomGPUsmallFromID] [Atom ID(%d) and index(%d) MISMATCH]\n", ligandAtoms[i].id, id);
-        return &(ligandAtoms[i]);
+        printf("[SyncToModel] [getAtomGPUsmallFromID] [Atom ID(%d) and index(%d) MISMATCH]\n", tempAtom->id, id);
+        return tempAtom;
     }
 }
 
 void setModelValueDihedral(global AtomGPUsmall* ligandAtoms, global float* individual, global DihedralRefDataGPU* dihedralRefData, constant parametersForGPU* parameters) {
     // For Every Dihedral
-    int i;
-    global AtomGPUsmall* m_atom1;
-    global AtomGPUsmall* m_atom2;
-    global AtomGPUsmall* m_atom3;
-    global AtomGPUsmall* m_atom4;
-    float delta;
-    for(i = 0; i < parameters->numDihedralElements; i++) {
-        m_atom1 = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].atom1ID);
-        m_atom2 = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].atom2ID);
-        m_atom3 = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].atom3ID);
-        m_atom4 = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].atom4ID);
+    for(int i = 0; i < parameters->numDihedralElements; i++) {
+        global AtomGPUsmall* m_atom1 = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].atom1ID, parameters->popMaxSize);
+        global AtomGPUsmall* m_atom2 = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].atom2ID, parameters->popMaxSize);
+        global AtomGPUsmall* m_atom3 = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].atom3ID, parameters->popMaxSize);
+        global AtomGPUsmall* m_atom4 = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].atom4ID, parameters->popMaxSize);
 
-        delta = individual[i] - Dihedral(m_atom1, m_atom2, m_atom3, m_atom4);
+        float delta = individual[i] - Dihedral(m_atom1, m_atom2, m_atom3, m_atom4);
 
         // Only rotate if delta is non-zero
         if (fabs(delta) > 0.001f) {
@@ -102,14 +97,13 @@ void setModelValueDihedral(global AtomGPUsmall* ligandAtoms, global float* indiv
             float quat_v[3];
             float quat_s;
             RbtQuat((float*)bondVector, delta * M_PI / 180.0f, &quat_s, (float*)quat_v);
-            int j;
-            global AtomGPUsmall* tempAtom;
+            
             float tempCoord[3];
             float translated[3];
             float rotated[3];
             float translated2[3];
-            for(j=0; j < dihedralRefData[i].numRotAtoms; j++) {
-                tempAtom = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].rotAtomsIDs[j]);
+            for(int j=0; j < dihedralRefData[i].numRotAtoms; j++) {
+                global AtomGPUsmall* tempAtom = getAtomGPUsmallFromID(ligandAtoms, dihedralRefData[i].rotAtomsIDs[j], parameters->popMaxSize);
                 tempCoord[0] = tempAtom->x;
                 tempCoord[1] = tempAtom->y;
                 tempCoord[2] = tempAtom->z;
@@ -129,7 +123,7 @@ void setModelValueDihedral(global AtomGPUsmall* ligandAtoms, global float* indiv
 }
 
 // Returns center of mass of atoms in the list
-void GetCenterOfMass(float* com, global AtomGPUsmall* atoms, int numAtoms) {
+void GetCenterOfMass(float* com, global AtomGPUsmall* atoms, int numAtoms, int popMaxSize) {
     // Default constructor (initialise to zero)
     com[0] = 0.0f;
     com[1] = 0.0f;
@@ -139,10 +133,11 @@ void GetCenterOfMass(float* com, global AtomGPUsmall* atoms, int numAtoms) {
     float totalMass = 0.0f;
     float tempMass = 0.0f;
     for(int i = 0; i < numAtoms; i++) {
-        tempMass = atoms[i].atomicMass;
-        com[0] += (tempMass * atoms[i].x);
-        com[1] += (tempMass * atoms[i].y);
-        com[2] += (tempMass * atoms[i].z);
+        global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(popMaxSize, i, atoms);
+        tempMass = tempAtom->atomicMass;
+        com[0] += (tempMass * tempAtom->x);
+        com[1] += (tempMass * tempAtom->y);
+        com[2] += (tempMass * tempAtom->z);
 
         totalMass += tempMass;// GetTotalAtomicMass
     }
@@ -181,7 +176,7 @@ void GetPrincipalAxes(PrincipalAxesSyncGPU* principalAxes, global AtomGPUsmall* 
     principalAxes->moment3 = 1.0f;
 
     // Store center of mass of CURRENT MODEL !!!
-    GetCenterOfMass((float*)principalAxes->com, atoms, numAtoms);
+    GetCenterOfMass((float*)principalAxes->com, atoms, numAtoms, parameters->popMaxSize);
 
     // Construct the moment of inertia tensor
     float inertiaTensor[3*3];// cuda fix (was: float inertiaTensor[N*N])
@@ -192,12 +187,13 @@ void GetPrincipalAxes(PrincipalAxesSyncGPU* principalAxes, global AtomGPUsmall* 
         // Vector from center of mass to atom
         float r[3];
         float atomCoord[3];
-        atomCoord[0] = atoms[i].x;
-        atomCoord[1] = atoms[i].y;
-        atomCoord[2] = atoms[i].z;
+        global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(parameters->popMaxSize, i, atoms);
+        atomCoord[0] = tempAtom->x;
+        atomCoord[1] = tempAtom->y;
+        atomCoord[2] = tempAtom->z;
         subtract2Vectors3((float*)atomCoord, (float*)principalAxes->com, (float*)r);
         // Atomic mass
-        float m = atoms[i].atomicMass;
+        float m = tempAtom->atomicMass;
         float rx2 = r[0] * r[0];
         float ry2 = r[1] * r[1];
         float rz2 = r[2] * r[2];
@@ -290,6 +286,7 @@ void GetPrincipalAxes(PrincipalAxesSyncGPU* principalAxes, global AtomGPUsmall* 
         // Ideally we would like to test an atom on the periphery of the molecule.
         float c0[3];
         float firstAtomCoords[3];
+        // ! Base atoms addr is atoms[0], so it is OK for atom at index 0. For atoms other than 0, [i] IS NOT OK, use getAtomGPUsmallFromBase !
         firstAtomCoords[0] = atoms[0].x;
         firstAtomCoords[1] = atoms[0].y;
         firstAtomCoords[2] = atoms[0].z;
@@ -360,8 +357,6 @@ void setModelValuePosition(global AtomGPUsmall* ligandAtoms, global float* indiv
     multiplyQuatResult(&qForward_s, (float*)qForward_v, &qBack_s, (float*)qBack_v, &q_s, (float*)q_v);// RbtQuat q = qForward * qBack;
     
     
-    int i;
-    global AtomGPUsmall* tempAtom;
     float tempCoord[3];
     float negPrAxesCom[3];
     negateVector3((float*)prAxes.com, (float*)negPrAxesCom);
@@ -373,8 +368,8 @@ void setModelValuePosition(global AtomGPUsmall* ligandAtoms, global float* indiv
     com[1] = individual[startComIndex + 1];
     com[2] = individual[startComIndex + 2];
     float translated2[3];
-    for(i = 0; i < parameters->ligandNumAtoms; i++) {
-        tempAtom = &(ligandAtoms[i]);
+    for(int i = 0; i < parameters->ligandNumAtoms; i++) {
+        global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(parameters->popMaxSize, i, ligandAtoms);
 
         tempCoord[0] = tempAtom->x;
         tempCoord[1] = tempAtom->y;

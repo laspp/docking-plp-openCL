@@ -25,7 +25,7 @@ __kernel void kernelPLP(constant parametersForGPU* parameters,
     // Score Individuals
     if(individualID >= popNewIndex[0] && individualID < popNewIndex[1]) {
 
-        global AtomGPUsmall* ligandAtomsOwn = getAtomGPUsmall(parameters->popMaxSize, runID, individualID, parameters->ligandNumAtoms, ligandAtomsSmallGlobalAll);
+        global AtomGPUsmall* ligandAtomsOwn = getAtomGPUsmallBase(parameters->popMaxSize, runID, individualID, parameters->ligandNumAtoms, ligandAtomsSmallGlobalAll);
 
         GridGPU ownGrid;
 
@@ -52,8 +52,8 @@ __kernel void kernelPLP(constant parametersForGPU* parameters,
         
         // f_plp term:
         for(int i=0; i < parameters->ligandNumAtoms; i++) {
-            
-            score += GetSmoothedValue(&(ligandAtomsOwn[i]), (float*)min, (float*)max, parameters, &ownGrid, grid);
+            global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(parameters->popMaxSize, i, ligandAtomsOwn);
+            score += GetSmoothedValue(tempAtom, (float*)min, (float*)max, parameters, &ownGrid, grid);
         }
 
         // f_clash term:
@@ -62,7 +62,7 @@ __kernel void kernelPLP(constant parametersForGPU* parameters,
 
             int numAtom1 = ligandAtomPairsForClash[currentAtom].numAtom1;
 
-            global AtomGPUsmall* atom1 = &(ligandAtomsOwn[ligandAtomPairsForClash[currentAtom].atom1ID - 1]);
+            global AtomGPUsmall* atom1 = getAtomGPUsmallFromBase(parameters->popMaxSize, ligandAtomPairsForClash[currentAtom].atom1ID - 1, ligandAtomsOwn);
 
             float atom1COORD[3];
             atom1COORD[0] = atom1->x;
@@ -70,7 +70,8 @@ __kernel void kernelPLP(constant parametersForGPU* parameters,
             atom1COORD[2] = atom1->z;
 
             for(int a = currentAtom; a < currentAtom + numAtom1; a++) {
-                score += PLPclash((float*)atom1COORD, &(ligandAtomsOwn[ligandAtomPairsForClash[a].atom2ID - 1]), ligandAtomPairsForClash[a].rClash);
+                global AtomGPUsmall* atom2 = getAtomGPUsmallFromBase(parameters->popMaxSize, ligandAtomPairsForClash[a].atom2ID - 1, ligandAtomsOwn);
+                score += PLPclash((float*)atom1COORD, atom2, ligandAtomPairsForClash[a].rClash);
             }
             currentAtom += numAtom1;
         }

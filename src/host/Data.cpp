@@ -543,6 +543,7 @@ Data::Data(std::string file, Batch& batchRef) : batch(batchRef) {
     initLigandBonds(ligandBondsFromFile);
     ligandAtomsSmallGlobalAll = new AtomGPUsmall[parameters.nruns * parameters.popMaxSize * parameters.ligandNumAtoms];
     ligandAtomsSmallGlobalAllSize = sizeof(AtomGPUsmall) * parameters.nruns * parameters.popMaxSize * parameters.ligandNumAtoms;
+    ligandAtomsSmallResultSize = sizeof(AtomGPUsmall) * parameters.nruns * parameters.ligandNumAtoms;
     initDihedralRefData(dihedralRefDataFromFile);
     equalsArray = new CL_STRUCT_INT[parameters.nruns * parameters.nReplicates];
     equalsArraySize = sizeof(CL_STRUCT_INT) * parameters.nruns * parameters.nReplicates;

@@ -11,17 +11,18 @@ __kernel void kernelInit2(constant parametersForGPU* parameters,
     if(individualID < parameters->popMaxSize) {
 
         // Copy Own Ligand Atom Instance
-        global AtomGPUsmall* ligandAtomsOwn = getAtomGPUsmall(parameters->popMaxSize, runID, individualID, parameters->ligandNumAtoms, ligandAtomsSmallGlobalAll);
+        global AtomGPUsmall* ligandAtomsOwn = getAtomGPUsmallBase(parameters->popMaxSize, runID, individualID, parameters->ligandNumAtoms, ligandAtomsSmallGlobalAll);
 
         for(int i = 0; i < parameters->ligandNumAtoms; i++) {
-            ligandAtomsOwn[i].id = ligandAtoms[i].id;
-            ligandAtomsOwn[i].atomicNo = ligandAtoms[i].atomicNo;
-            ligandAtomsOwn[i].triposType = ligandAtoms[i].triposType;
-            ligandAtomsOwn[i].classification = ligandAtoms[i].classification;
-            ligandAtomsOwn[i].atomicMass = ligandAtoms[i].atomicMass;
-            ligandAtomsOwn[i].x = ligandAtoms[i].x;
-            ligandAtomsOwn[i].y = ligandAtoms[i].y;
-            ligandAtomsOwn[i].z = ligandAtoms[i].z;
+            global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(parameters->popMaxSize, i, ligandAtomsOwn);
+            tempAtom->id = ligandAtoms[i].id;
+            tempAtom->atomicNo = ligandAtoms[i].atomicNo;
+            tempAtom->triposType = ligandAtoms[i].triposType;
+            tempAtom->classification = ligandAtoms[i].classification;
+            tempAtom->atomicMass = ligandAtoms[i].atomicMass;
+            tempAtom->x = ligandAtoms[i].x;
+            tempAtom->y = ligandAtoms[i].y;
+            tempAtom->z = ligandAtoms[i].z;
         }
     }
 }

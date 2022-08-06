@@ -19,7 +19,7 @@ __kernel void kernelSyncToModel(constant parametersForGPU* parameters, global fl
     // Sync to Model Individuals
     if(individualID >= popNewIndex[0] && individualID < popNewIndex[1]) {
 
-        global AtomGPUsmall* ligandAtomsOwn = getAtomGPUsmall(parameters->popMaxSize, runID, individualID, parameters->ligandNumAtoms, ligandAtomsSmallGlobalAll);
+        global AtomGPUsmall* ligandAtomsOwn = getAtomGPUsmallBase(parameters->popMaxSize, runID, individualID, parameters->ligandNumAtoms, ligandAtomsSmallGlobalAll);
         global float* individual = getIndividual(parameters->popMaxSize, runID, individualID, parameters->chromStoreLen, globalPopulations);
         syncToModel(ligandAtomsOwn, individual, dihedralRefData, parameters); 
     }

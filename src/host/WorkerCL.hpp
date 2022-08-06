@@ -60,6 +60,7 @@ public:
     cl_mem cl_receptorAtoms;
     cl_mem cl_ligandBonds;
     cl_mem cl_ligandAtomsSmallGlobalAll;
+    cl_mem cl_ligandAtomsSmallResult;
     cl_mem cl_dihedralRefData;
     cl_mem cl_equalsArray;
     cl_mem cl_receptorIndex;

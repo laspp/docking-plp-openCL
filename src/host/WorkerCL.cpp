@@ -107,6 +107,7 @@ WorkerCL::~WorkerCL() {
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_receptorAtoms));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandBonds));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomsSmallGlobalAll));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomsSmallResult));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_dihedralRefData));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_equalsArray));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_receptorIndex));
@@ -135,6 +136,7 @@ void WorkerCL::initMemory(Data& data, Batch& batch) {
     CHECK_CL_ERROR(cl_receptorAtoms = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.receptorAtomsSize, data.receptorAtoms, &error));
     CHECK_CL_ERROR(cl_ligandBonds = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.ligandBondsSize, data.ligandBonds, &error));
     CHECK_CL_ERROR(cl_ligandAtomsSmallGlobalAll = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.ligandAtomsSmallGlobalAllSize, data.ligandAtomsSmallGlobalAll, &error));
+    CHECK_CL_ERROR(cl_ligandAtomsSmallResult = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.ligandAtomsSmallResultSize, data.ligandAtomsSmallGlobalAll, &error));
     CHECK_CL_ERROR(cl_dihedralRefData = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.dihedralRefDataSize, data.dihedralRefData, &error));
     CHECK_CL_ERROR(cl_equalsArray = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.equalsArraySize, data.equalsArray, &error));
     CHECK_CL_ERROR(cl_receptorIndex = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.receptorIndexSize, data.receptorIndex, &error));
@@ -227,6 +229,7 @@ void WorkerCL::kernelSetArgs(Data& data, Batch& batch) {
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 1, sizeof(cl_mem), (void *)&cl_globalPopulations));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 2, sizeof(cl_mem), (void *)&cl_ligandAtomsSmallGlobalAll));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 3, sizeof(cl_mem), (void *)&cl_dihedralRefData));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 4, sizeof(cl_mem), (void *)&cl_ligandAtomsSmallResult));
 
     TIMER_END(data.t_kernelSetArgs, data.tot_kernelSetArgs);
 }
@@ -310,5 +313,5 @@ void WorkerCL::finalize(Data& data, Batch& batch) {
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelFinalize], 1, NULL, g_kernelFinalize, l_kernelFinalize, 0, NULL, NULL), data.t_kernelFinalize, data.tot_kernelFinalize);
 
     // Read solution (blocking) (read only as much as needed)
-    TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_ligandAtomsSmallGlobalAll, CL_TRUE, 0, data.parameters.nruns * data.parameters.ligandNumAtoms * sizeof(AtomGPUsmall), data.ligandAtomsSmallGlobalAll, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
+    TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_ligandAtomsSmallResult, CL_TRUE, 0, data.ligandAtomsSmallResultSize, data.ligandAtomsSmallGlobalAll, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
 }
