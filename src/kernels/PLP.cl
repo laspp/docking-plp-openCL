@@ -57,7 +57,7 @@ float FplpActual(float* v1, int classification, global AtomGPU* rAtom) {
             rep(r, 3.2f, 5.0f, W_PLP_REP_M5 * 0.1f, W_PLP_REP_M5 * 20.0f);
 }
 
-float Fplp(global AtomGPUsmall* lAtom, global AtomGPU* rAtom) {
+float Fplp(global AtomGPUsmall* lAtom, int classification, global AtomGPU* rAtom) {
 
     // ligand atom coordinates:
     float v1[3];
@@ -65,10 +65,10 @@ float Fplp(global AtomGPUsmall* lAtom, global AtomGPU* rAtom) {
     v1[1] = lAtom->y;
     v1[2] = lAtom->z;
 
-    return FplpActual((float*)v1, lAtom->classification, rAtom);
+    return FplpActual((float*)v1, classification, rAtom);
 }
 
-float CsiteAtom(global AtomGPUsmall* lAtom, constant parametersForGPU* parameters) {
+float CsiteAtom(global AtomGPUsmall* lAtom, int triposType, constant parametersForGPU* parameters) {
 
     float atom[3];
     atom[0] = lAtom->x;
@@ -84,7 +84,7 @@ float CsiteAtom(global AtomGPUsmall* lAtom, constant parametersForGPU* parameter
     max[2] = parameters->dockingSiteInfo.maxCavity.z;
 
     // if heavy atom outside, constant penalty
-    return (lAtom->triposType != TRIPOS_TYPE_H && lAtom->triposType != TRIPOS_TYPE_H_P && 
+    return (triposType != TRIPOS_TYPE_H && triposType != TRIPOS_TYPE_H_P && 
             (atom[0] < min[0] || atom[0] > max[0] ||
              atom[1] < min[1] || atom[1] > max[1] ||
              atom[2] < min[2] || atom[2] > max[2])) * 50.0f;

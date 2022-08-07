@@ -10,7 +10,8 @@ __kernel void kernelPLP(constant parametersForGPU* parameters,
                     global int* popNewIndex,
                     global LigandAtomPairsForClash* ligandAtomPairsForClash,
                     global DihedralRefDataGPU* dihedralRefData,
-                    global GridPointGPU* grid) {
+                    global GridPointGPU* grid,
+                    global AtomGPU* ligandAtoms) {
 
     uint runID=get_global_id(RUN_ID_2D);
     uint individualID=get_global_id(INDIVIDUAL_ID_2D);
@@ -50,10 +51,10 @@ __kernel void kernelPLP(constant parametersForGPU* parameters,
         max[1] = parameters->dockingSiteInfo.maxCavity.y;
         max[2] = parameters->dockingSiteInfo.maxCavity.z;
         
-        // f_plp term:
+        // f_plp and c_site term:
         for(int i=0; i < parameters->ligandNumAtoms; i++) {
             global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(parameters->popMaxSize, i, ligandAtomsOwn);
-            score += GetSmoothedValue(tempAtom, (float*)min, (float*)max, parameters, &ownGrid, grid);
+            score += GetSmoothedValue(tempAtom, &(ligandAtoms[i]), (float*)min, (float*)max, parameters, &ownGrid, grid);
         }
 
         // f_clash term:

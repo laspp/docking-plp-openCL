@@ -134,11 +134,6 @@ typedef struct AtomGPU_t {
 } AtomGPU;
 
 typedef struct AtomGPUsmall_t {
-    CL_STRUCT_INT id;
-    CL_STRUCT_INT atomicNo;
-    CL_STRUCT_INT triposType;
-    CL_STRUCT_INT classification;// classified atom
-    CL_STRUCT_FLOAT atomicMass;
     CL_STRUCT_FLOAT x;
     CL_STRUCT_FLOAT y;
     CL_STRUCT_FLOAT z;

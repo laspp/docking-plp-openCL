@@ -697,7 +697,7 @@ void Data::saveResultsToFile(std::string path, int outputOnlyBestN) {
         // Atoms block
         for(int j=0; j < parameters.ligandNumAtoms; j++){
             int offset = sortedI * parameters.ligandNumAtoms;
-            fprintf(fout, "%10.4f%10.4f%10.4f %3s 0  0  0  0  0  0\n",ligandAtomsSmallGlobalAll[offset+j].x, ligandAtomsSmallGlobalAll[offset+j].y, ligandAtomsSmallGlobalAll[offset+j].z, elements[ligandAtomsSmallGlobalAll[offset+j].atomicNo-1]);
+            fprintf(fout, "%10.4f%10.4f%10.4f %3s 0  0  0  0  0  0\n",ligandAtomsSmallGlobalAll[offset+j].x, ligandAtomsSmallGlobalAll[offset+j].y, ligandAtomsSmallGlobalAll[offset+j].z, elements[ligandAtoms[j].atomicNo-1]);
         }
 
         // Bonds block

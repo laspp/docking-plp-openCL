@@ -34,7 +34,7 @@ inline void index3DtoCoords(int* xyz, GridGPU* ownGrid, float* coord) {
 
 // DM 20 Jul 2000 - get values smoothed by trilinear interpolation
 // D. Oberlin and H.A. Scheraga, J. Comp. Chem. (1998) 19, 71.
-float GetSmoothedValue(global AtomGPUsmall* lAtom, float* min, float* max, constant parametersForGPU* parameters, GridGPU* ownGrid, global GridPointGPU* grid) {
+float GetSmoothedValue(global AtomGPUsmall* lAtom, global AtomGPU* atom, float* min, float* max, constant parametersForGPU* parameters, GridGPU* ownGrid, global GridPointGPU* grid) {
 
     // ligand atom coordinates:
     float c[3];
@@ -47,7 +47,7 @@ float GetSmoothedValue(global AtomGPUsmall* lAtom, float* min, float* max, const
                  c[1] > min[1] && c[1] < max[1] &&
                  c[2] > min[2] && c[2] < max[2]);
 
-    int heavy = (lAtom->triposType != TRIPOS_TYPE_H && lAtom->triposType != TRIPOS_TYPE_H_P);
+    int heavy = (atom->triposType != TRIPOS_TYPE_H && atom->triposType != TRIPOS_TYPE_H_P);
 
     float rx = 1.0f / ownGrid->gridStep[0]; // reciprocal of grid step (x)
     float ry = 1.0f / ownGrid->gridStep[1]; // reciprocal of grid step (y)
@@ -82,7 +82,7 @@ float GetSmoothedValue(global AtomGPUsmall* lAtom, float* min, float* max, const
     float bx1by0 = bx1 * by0;
     float bx1by1 = bx1 * by1;
 
-    int classification = lAtom->classification;
+    int classification = atom->classification; // Used by GET_GRID macro
 
     val += GET_GRID(index3Dto1Dxyz(iXYZ[0], iXYZ[1], iXYZ[2], ownGrid)) * bx0by0 * bz0;
     val += GET_GRID(index3Dto1Dxyz(iXYZ[0], iXYZ[1], iXYZ[2] + 1, ownGrid)) * bx0by0 * bz1;

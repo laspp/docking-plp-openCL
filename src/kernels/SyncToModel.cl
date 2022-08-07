@@ -54,15 +54,8 @@ float Dihedral(global AtomGPUsmall* m_atom1, global AtomGPUsmall* m_atom2, globa
     return phi * 180.0f / M_PI;
 }
 
-global AtomGPUsmall* getAtomGPUsmallFromID(global AtomGPUsmall* ligandAtoms,int id, int popMaxSize) {
-    int i = id - 1;
-    global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(popMaxSize, i, ligandAtoms);
-    if(tempAtom->id == id) {
-        return tempAtom;
-    } else {
-        printf("[SyncToModel] [getAtomGPUsmallFromID] [Atom ID(%d) and index(%d) MISMATCH]\n", tempAtom->id, id);
-        return tempAtom;
-    }
+inline global AtomGPUsmall* getAtomGPUsmallFromID(global AtomGPUsmall* ligandAtoms,int id, int popMaxSize) {
+    return getAtomGPUsmallFromBase(popMaxSize, id - 1, ligandAtoms);
 }
 
 void setModelValueDihedral(global AtomGPUsmall* ligandAtoms, global float* individual, global DihedralRefDataGPU* dihedralRefData, constant parametersForGPU* parameters) {
@@ -123,7 +116,7 @@ void setModelValueDihedral(global AtomGPUsmall* ligandAtoms, global float* indiv
 }
 
 // Returns center of mass of atoms in the list
-void GetCenterOfMass(float* com, global AtomGPUsmall* atoms, int numAtoms, int popMaxSize) {
+void GetCenterOfMass(float* com, global AtomGPUsmall* atoms, global AtomGPU* ligandAtomsData, int numAtoms, int popMaxSize) {
     // Default constructor (initialise to zero)
     com[0] = 0.0f;
     com[1] = 0.0f;
@@ -131,10 +124,9 @@ void GetCenterOfMass(float* com, global AtomGPUsmall* atoms, int numAtoms, int p
     
     // Accumulate sum of mass*coord
     float totalMass = 0.0f;
-    float tempMass = 0.0f;
     for(int i = 0; i < numAtoms; i++) {
         global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(popMaxSize, i, atoms);
-        tempMass = tempAtom->atomicMass;
+        float tempMass = ligandAtomsData[i].atomicMass;
         com[0] += (tempMass * tempAtom->x);
         com[1] += (tempMass * tempAtom->y);
         com[2] += (tempMass * tempAtom->z);
@@ -147,7 +139,7 @@ void GetCenterOfMass(float* com, global AtomGPUsmall* atoms, int numAtoms, int p
     com[2] /= totalMass;
 }
 
-void GetPrincipalAxes(PrincipalAxesSyncGPU* principalAxes, global AtomGPUsmall* atoms, global float* individual, constant parametersForGPU* parameters, int numAtoms) {
+void GetPrincipalAxes(PrincipalAxesSyncGPU* principalAxes, global AtomGPUsmall* atoms, global AtomGPU* ligandAtomsData, global float* individual, constant parametersForGPU* parameters, int numAtoms) {
     const int N = 3;
 
     // TODO: No check for atomList.empty() !
@@ -176,14 +168,13 @@ void GetPrincipalAxes(PrincipalAxesSyncGPU* principalAxes, global AtomGPUsmall* 
     principalAxes->moment3 = 1.0f;
 
     // Store center of mass of CURRENT MODEL !!!
-    GetCenterOfMass((float*)principalAxes->com, atoms, numAtoms, parameters->popMaxSize);
+    GetCenterOfMass((float*)principalAxes->com, atoms, ligandAtomsData, numAtoms, parameters->popMaxSize);
 
     // Construct the moment of inertia tensor
     float inertiaTensor[3*3];// cuda fix (was: float inertiaTensor[N*N])
     // Set to zero
     zerosNxN((float*)inertiaTensor, N);
-    int i;
-    for(i=0; i < numAtoms; i++) {
+    for(int i=0; i < numAtoms; i++) {
         // Vector from center of mass to atom
         float r[3];
         float atomCoord[3];
@@ -193,7 +184,7 @@ void GetPrincipalAxes(PrincipalAxesSyncGPU* principalAxes, global AtomGPUsmall* 
         atomCoord[2] = tempAtom->z;
         subtract2Vectors3((float*)atomCoord, (float*)principalAxes->com, (float*)r);
         // Atomic mass
-        float m = tempAtom->atomicMass;
+        float m = ligandAtomsData[i].atomicMass;
         float rx2 = r[0] * r[0];
         float ry2 = r[1] * r[1];
         float rz2 = r[2] * r[2];
@@ -306,13 +297,13 @@ void GetPrincipalAxes(PrincipalAxesSyncGPU* principalAxes, global AtomGPUsmall* 
 }
 
 // For COM and Orientation, Only Once!
-void setModelValuePosition(global AtomGPUsmall* ligandAtoms, global float* individual, constant parametersForGPU* parameters) {
+void setModelValuePosition(global AtomGPUsmall* ligandAtoms, global AtomGPU* ligandAtomsData, global float* individual, constant parametersForGPU* parameters) {
     
     // Determine the principal axes and centre of mass of the reference atoms
     PrincipalAxesSyncGPU prAxes;
         // TODO: if tethered use tetheredAtomList, not whole atomList.
     // m_refAtoms = atomList (all atoms) = ligandAtoms
-    GetPrincipalAxes(&prAxes, ligandAtoms, individual, parameters, parameters->ligandNumAtoms);
+    GetPrincipalAxes(&prAxes, ligandAtoms, ligandAtomsData, individual, parameters, parameters->ligandNumAtoms);
 
     // Determine the overall rotation required.
     // 1) Go back to realign with Cartesian axes
@@ -390,10 +381,10 @@ void setModelValuePosition(global AtomGPUsmall* ligandAtoms, global float* indiv
     
 }
 
-void syncToModel(global AtomGPUsmall* ligandAtoms, global float* individual, global DihedralRefDataGPU* dihedralRefData, constant parametersForGPU* parameters) {
+void syncToModel(global AtomGPUsmall* ligandAtoms, global AtomGPU* ligandAtomsData, global float* individual, global DihedralRefDataGPU* dihedralRefData, constant parametersForGPU* parameters) {
     // TODO: setModelValueOccupancyElement(...)
     setModelValueDihedral(ligandAtoms, individual, dihedralRefData, parameters);
-    setModelValuePosition(ligandAtoms, individual, parameters);
+    setModelValuePosition(ligandAtoms, ligandAtomsData, individual, parameters);
 }
 
 #endif

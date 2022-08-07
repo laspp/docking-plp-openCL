@@ -15,11 +15,6 @@ __kernel void kernelInit2(constant parametersForGPU* parameters,
 
         for(int i = 0; i < parameters->ligandNumAtoms; i++) {
             global AtomGPUsmall* tempAtom = getAtomGPUsmallFromBase(parameters->popMaxSize, i, ligandAtomsOwn);
-            tempAtom->id = ligandAtoms[i].id;
-            tempAtom->atomicNo = ligandAtoms[i].atomicNo;
-            tempAtom->triposType = ligandAtoms[i].triposType;
-            tempAtom->classification = ligandAtoms[i].classification;
-            tempAtom->atomicMass = ligandAtoms[i].atomicMass;
             tempAtom->x = ligandAtoms[i].x;
             tempAtom->y = ligandAtoms[i].y;
             tempAtom->z = ligandAtoms[i].z;

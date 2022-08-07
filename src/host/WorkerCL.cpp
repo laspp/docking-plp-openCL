@@ -198,6 +198,7 @@ void WorkerCL::kernelSetArgs(Data& data, Batch& batch) {
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSyncToModel], 2, sizeof(cl_mem), (void *)&cl_ligandAtomsSmallGlobalAll));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSyncToModel], 3, sizeof(cl_mem), (void *)&cl_dihedralRefData));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSyncToModel], 4, sizeof(cl_mem), (void *)&cl_popNewIndex));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSyncToModel], 5, sizeof(cl_mem), (void *)&cl_ligandAtoms));
 
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelPLP], 0, sizeof(cl_mem), (void *)&cl_parameters));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelPLP], 1, sizeof(cl_mem), (void *)&cl_ligandAtomsSmallGlobalAll));
@@ -206,6 +207,7 @@ void WorkerCL::kernelSetArgs(Data& data, Batch& batch) {
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelPLP], 4, sizeof(cl_mem), (void *)&cl_ligandAtomPairsForClash));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelPLP], 5, sizeof(cl_mem), (void *)&cl_dihedralRefData));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelPLP], 6, sizeof(cl_mem), (void *)&cl_grid));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelPLP], 7, sizeof(cl_mem), (void *)&cl_ligandAtoms));
 
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSort], 0, sizeof(cl_mem), (void *)&cl_parameters));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSort], 1, sizeof(cl_mem), (void *)&cl_globalPopulations));
@@ -230,6 +232,7 @@ void WorkerCL::kernelSetArgs(Data& data, Batch& batch) {
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 2, sizeof(cl_mem), (void *)&cl_ligandAtomsSmallGlobalAll));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 3, sizeof(cl_mem), (void *)&cl_dihedralRefData));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 4, sizeof(cl_mem), (void *)&cl_ligandAtomsSmallResult));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 5, sizeof(cl_mem), (void *)&cl_ligandAtoms));
 
     TIMER_END(data.t_kernelSetArgs, data.tot_kernelSetArgs);
 }
