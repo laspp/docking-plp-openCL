@@ -7,24 +7,30 @@
 # Input arguments check
 builder="ninja"  # ninja or make
 num_runs=1
+num_cycles=0
 
 if [ "$#" -ge 1 ] 
 then
     builder=$1
 fi
 
-if [ "$#" -eq 2 ] 
+if [ "$#" -ge 2 ] 
 then
     num_runs=$2
 fi
 
-if [ "$#" -gt 2 ] 
+if [ "$#" -eq 3 ] 
 then
-    echo "Usage: $0 [ninja | make] [num_runs]"
-    echo "Defaults: builder=ninja and num_runs=1"
+    num_cycles=$3
+fi
+
+if [ "$#" -gt 3 ] 
+then
+    echo "Usage: $0 [ninja | make] [num_runs] [num_cycles]"
+    echo "Defaults: builder=ninja, num_runs=1 and num_cycles=0"
     echo "Example: "
-    echo "  build_and_run.sh ninja 2"
-    echo "will build the solution with ninja and run test 2 times"
+    echo "  build_and_run.sh ninja 2 1000"
+    echo "will build the solution with ninja and run test 2 times with 1000 iterations of genetic algorithm"
     exit 1
 fi
 
@@ -67,15 +73,13 @@ if [ "$?" -eq "0" ]
 then
     echo ======================================
     echo "Running tests (num_runs: $num_runs)"
-    
-    for (( i=1; i<=$num_runs; i++ )) 
+    echo ======================================
+    for FILE in batches/*.json
     do 
-        echo --------------------------------------
-        echo Run $i of $num_runs
-        echo --------------------------------------
-        ./build/CmDockOpenCL batches/run.json
-        echo
+        for (( i=1; i<=$num_runs; i++ )) 
+        do 
+            ./build/CmDockOpenCL $FILE $num_cycles
+        done
         echo
     done
-    
 fi

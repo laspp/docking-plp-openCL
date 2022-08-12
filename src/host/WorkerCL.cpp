@@ -81,7 +81,7 @@ WorkerCL::WorkerCL(Data& data, Batch& batch) : programStrings() {
     char* buildLog = new char[buildLogLen + 1];
     CHECK_CL_ERROR(error = clGetProgramBuildInfo(program, deviceID[batch.deviceIndex], CL_PROGRAM_BUILD_LOG, buildLogLen, buildLog, NULL));
     buildLog[buildLogLen] = '\0';
-    if(buildLogLen > 0) {
+    if(buildLogLen > 2) {
         dbgl(buildLog);
     }
 

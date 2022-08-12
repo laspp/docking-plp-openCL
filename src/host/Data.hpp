@@ -163,6 +163,7 @@ class Data {
     void saveScoresToFile(std::string path);
 
     Batch& batch;
+    std::string outputFileName;
 
     // Score:
     uint32_t numOfRunsDone = 0;
