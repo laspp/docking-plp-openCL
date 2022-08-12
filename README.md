@@ -20,7 +20,7 @@ module load CUDA
 
 module load CMake
 
-./build_and_run.sh make 1
+./build_and_run.sh make 1 1000
 
 ### Windows
 
