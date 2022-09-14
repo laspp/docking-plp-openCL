@@ -3,11 +3,14 @@
 #include <fstream>
 #include "io.hpp"
 #include <omp.h>
+#include <algorithm>
 
 #define CHECK_CL_ERROR(clOperation) clOperation;if(error!=CL_SUCCESS){dbglWE(__FILE__,__FUNCTION__,__LINE__,"Failed to perform OpenCL operation, error code: "+std::to_string(error)+".");}
 #define TIME_CL(cmd, t_t, tot_t) if(batch.timeKernels==1){t_t=omp_get_wtime();CHECK_CL_ERROR(cmd) CHECK_CL_ERROR(error=clFlush(commandQueue)) CHECK_CL_ERROR(error=clFinish(commandQueue)) tot_t+=omp_get_wtime()-t_t;}else{CHECK_CL_ERROR(cmd)}
 #define TIMER_START(t_t) if(batch.timeKernels==1){t_t=omp_get_wtime();}
+#define TIMER_START_PROGRAM(t_t) if(batch.timeProgram==1){t_t=omp_get_wtime();}
 #define TIMER_END(t_t, tot_t) if(batch.timeKernels==1){tot_t+=omp_get_wtime()-t_t;}
+#define TIMER_END_PROGRAM(t_t, tot_t) if(batch.timeProgram==1){tot_t+=omp_get_wtime()-t_t;}
 #define ASIGN_SIZE_2D(arr, zero, one) arr[0]=zero;arr[1]=one
 #define ASIGN_SIZE_3D(arr, zero, one, two) arr[0]=zero;arr[1]=one;arr[2]=two
 
@@ -40,9 +43,11 @@ void WorkerCL::getStringVectorForKernels() {
     }
 }
 
-WorkerCL::WorkerCL(Data& data, Batch& batch) : programStrings() {
+// Create WorkerCL and create kernels
+WorkerCL::WorkerCL(Batch& batchRef) : programStrings(), batch(batchRef) {
 
-    TIMER_START(data.t_workerCreation);
+    TIMER_START_PROGRAM(t_workerCreation);
+    TIMER_START_PROGRAM(t_programRunTime);
 
     cl_platform_id	platformID[MAX_PLATFORMS];
     deviceID = new cl_device_id[MAX_DEVICES];
@@ -87,7 +92,11 @@ WorkerCL::WorkerCL(Data& data, Batch& batch) : programStrings() {
 
     delete[] buildLog;
 
-    TIMER_END(data.t_workerCreation, data.tot_workerCreation);
+    runTimes = new double[batch.jobs.size()];
+    
+    TIMER_END_PROGRAM(t_workerCreation, tot_workerCreation);
+
+    kernelCreation();
 }
 
 WorkerCL::~WorkerCL() {
@@ -98,34 +107,23 @@ WorkerCL::~WorkerCL() {
     }
     CHECK_CL_ERROR(error = clReleaseProgram(program));
 
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_seed));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_rngStates));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_parameters));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_globalPopulations));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_globalPopulationsCopy));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtoms));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_receptorAtoms));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandBonds));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomsSmallGlobalAll));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomsSmallResult));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_dihedralRefData));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_equalsArray));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_receptorIndex));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_numGoodReceptors));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_bestScore));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_popNewIndex));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomPairsForClash));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_grid));
-
     CHECK_CL_ERROR(error = clReleaseCommandQueue(commandQueue));
     CHECK_CL_ERROR(error = clReleaseContext(context));
 
+    TIMER_END_PROGRAM(t_programRunTime, tot_programRunTime);
+
+    if(batch.timeProgram == 1) {
+        saveProgramTimersToFile(batch.outputPath + "/");
+    }
+
     delete[] deviceID;
+    delete[] runTimes;
 }
 
-void WorkerCL::initMemory(Data& data, Batch& batch) {
+void WorkerCL::initMemory(Data& data) {
     
     TIMER_START(data.t_dataToGPU);
+    TIMER_START_PROGRAM(t_tempRunTime);
 
     CHECK_CL_ERROR(cl_seed = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.seedSize, data.seed, &error));
     CHECK_CL_ERROR(cl_rngStates = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.rngStatesSize, data.rngStates, &error));
@@ -149,9 +147,9 @@ void WorkerCL::initMemory(Data& data, Batch& batch) {
     TIMER_END(data.t_dataToGPU, data.tot_dataToGPU);
 }
 
-void WorkerCL::kernelCreation(Data& data, Batch& batch) {
+void WorkerCL::kernelCreation() {
 
-    TIMER_START(data.t_kernelCreation);
+    TIMER_START_PROGRAM(t_kernelCreation);
 
     uint32_t numberOfKernels = static_cast<std::underlying_type<Kernel>::type>(Kernel::NUM_KERNELS);
 
@@ -160,10 +158,10 @@ void WorkerCL::kernelCreation(Data& data, Batch& batch) {
         CHECK_CL_ERROR(kernels[i] = clCreateKernel(program, KernelNames[i].c_str(), &error));
     }
 
-    TIMER_END(data.t_kernelCreation, data.tot_kernelCreation);
+    TIMER_END_PROGRAM(t_kernelCreation, tot_kernelCreation);
 }
 
-void WorkerCL::kernelSetArgs(Data& data, Batch& batch) {
+void WorkerCL::kernelSetArgs(Data& data) {
 
     TIMER_START(data.t_kernelSetArgs);
 
@@ -237,7 +235,7 @@ void WorkerCL::kernelSetArgs(Data& data, Batch& batch) {
     TIMER_END(data.t_kernelSetArgs, data.tot_kernelSetArgs);
 }
 
-void WorkerCL::initialStep(Data& data, Batch& batch) {
+void WorkerCL::initialStep(Data& data) {
 
     ASIGN_SIZE_2D(g_kernelInit, (data.parameters.popMaxSize / data.LOCAL_SIZE)*data.LOCAL_SIZE + data.LOCAL_SIZE, data.parameters.nruns);
     ASIGN_SIZE_2D(l_kernelInit, data.LOCAL_SIZE, 1);
@@ -292,7 +290,7 @@ void WorkerCL::initialStep(Data& data, Batch& batch) {
 	l_kernelFinalize[0] = data.LOCAL_SIZE;
 }
 
-void WorkerCL::runStep(Data& data, Batch& batch) {
+void WorkerCL::runStep(Data& data) {
 
     // Create new individuals
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelCreateNew], 2, NULL, g_kernelCreateNew, l_kernelCreateNew, 0, NULL, NULL), data.t_kernelCreateNew, data.tot_kernelCreateNew);
@@ -311,10 +309,69 @@ void WorkerCL::runStep(Data& data, Batch& batch) {
     // FIXME: Check score/check reduced Bool var if finished when that kernel is implemented
 }
 
-void WorkerCL::finalize(Data& data, Batch& batch) {
+void WorkerCL::finalize(Data& data) {
 
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelFinalize], 1, NULL, g_kernelFinalize, l_kernelFinalize, 0, NULL, NULL), data.t_kernelFinalize, data.tot_kernelFinalize);
 
     // Read solution (blocking) (read only as much as needed)
     TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_ligandAtomsSmallResult, CL_TRUE, 0, data.ligandAtomsSmallResultSize, data.ligandAtomsSmallGlobalAll, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
+}
+
+void WorkerCL::releaseMemory() {
+
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_seed));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_rngStates));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_parameters));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_globalPopulations));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_globalPopulationsCopy));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtoms));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_receptorAtoms));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandBonds));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomsSmallGlobalAll));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomsSmallResult));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_dihedralRefData));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_equalsArray));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_receptorIndex));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_numGoodReceptors));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_bestScore));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_popNewIndex));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomPairsForClash));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_grid));
+
+    if(batch.timeProgram == 1) {
+        tot_tempRunTime = omp_get_wtime() - t_tempRunTime;
+        if (run < batch.jobs.size()) {
+            runTimes[run] = tot_tempRunTime;
+        } else {
+            dbglWE(__FILE__,__FUNCTION__,__LINE__,"More runs than batch has jobs.");
+        }
+        run++;
+    }
+}
+
+void WorkerCL::saveProgramTimersToFile(std::string path) {
+
+    // get current date:
+    time_t curtime;
+    time(&curtime);
+    std::string fileName = std::string(ctime(&curtime));
+    std::replace(fileName.begin(), fileName.end(), ':', '_');
+    std::replace(fileName.begin(), fileName.end(), '\n', '_');
+
+    std::string completeFilePath = path + fileName + "_programTimers.csv";
+
+    // open file
+    FILE *fout;
+    openFileC(completeFilePath, fout);
+
+    fprintf(fout,"Timer,time\n");
+    fprintf(fout,"ProgramRunTime time,%lf\r\n", tot_programRunTime);
+    fprintf(fout,"WorkerCLCreation time,%lf\r\n", tot_workerCreation);
+    fprintf(fout,"Kernel creation time,%lf\r\n", tot_kernelCreation);
+
+    for (uint32_t i = 0; i < batch.jobs.size(); i++) {
+        fprintf(fout,"%s,%lf\r\n", batch.jobs.at(i).c_str() ,runTimes[i]);
+    }
+    // close
+    fclose(fout);
 }

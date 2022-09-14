@@ -24,7 +24,9 @@ int main(int argc, char* argv[]) {
     double loopStartTime, loopEndTime;
     Batch batch;
     parseBatch(argc, argv, batch);
-    // WorkerCL scope
+
+    WorkerCL workerCL(batch);
+
     for(auto  & job : batch.jobs)
     {
         std::string fileName=job;
@@ -36,17 +38,15 @@ int main(int argc, char* argv[]) {
             data.parameters.ncycles=10000;
         }
         //data.parameters.nconvergence=30;
-        WorkerCL workerCL(data, batch);
-        workerCL.kernelCreation(data, batch);
-        loopStartTime = omp_get_wtime(); 
-        workerCL.initMemory(data, batch);
-        workerCL.kernelSetArgs(data, batch);
-        workerCL.initialStep(data, batch);
+        loopStartTime = omp_get_wtime();
+        workerCL.initMemory(data);
+        workerCL.kernelSetArgs(data);
+        workerCL.initialStep(data);
         //dbg("0/" + std::to_string(data.parameters.ncycles));
         int cyclesDone=0;
         for(int i=0; i < data.parameters.ncycles; i++) {
             
-            workerCL.runStep(data, batch);
+            workerCL.runStep(data);
 
             cyclesDone++;
             /*if(i % 50 == 0) {
@@ -56,12 +56,13 @@ int main(int argc, char* argv[]) {
             //if(cycle_limit==0 && data.convergenceFlag) break;
         }
 
-        workerCL.finalize(data, batch);
+        workerCL.finalize(data);
         loopEndTime = omp_get_wtime();
         std::cout << fileName + "\t" + std::to_string(cyclesDone) + "\t" + std::to_string(data.parameters.nruns) + "\t" + std::to_string(loopEndTime - loopStartTime) << std::endl;    
 	//dbg("\r" + std::to_string(cyclesDone) + "/" + std::to_string(data.parameters.ncycles));
 	//std::cout << std::endl;
     //dbgl("Per step per run time: " + std::to_string((loopEndTime - loopStartTime)/(cyclesDone*data.parameters.nruns)) + "s");
+        workerCL.releaseMemory();
     }
     
     /*

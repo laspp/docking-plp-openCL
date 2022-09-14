@@ -745,8 +745,6 @@ void Data::saveTimersToFile(std::string path) {
     openFileC(completeFilePath, fout);
 
     fprintf(fout,"Data preparation time,%lf\r\n", tot_dataPrep);
-    fprintf(fout,"WorkerCLCreation time,%lf\r\n", tot_workerCreation);
-    fprintf(fout,"Kernel creation time,%lf\r\n", tot_kernelCreation);
     fprintf(fout,"Data to GPU time,%lf\r\n", tot_dataToGPU);
     fprintf(fout,"Data to CPU time,%lf\r\n", tot_dataToCPU);
     fprintf(fout,"Kernels set args time,%lf\r\n", tot_kernelSetArgs);

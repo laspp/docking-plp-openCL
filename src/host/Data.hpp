@@ -223,12 +223,8 @@ public:
     // Timers:
     double t_dataPrep = 0.0;
     double tot_dataPrep = 0.0;
-    double t_workerCreation = 0.0;
-    double tot_workerCreation = 0.0;
     double t_dataToGPU = 0.0;
     double tot_dataToGPU = 0.0;
-    double t_kernelCreation = 0.0;
-    double tot_kernelCreation = 0.0;
     double t_kernelSetArgs = 0.0;
     double tot_kernelSetArgs = 0.0;
     double t_dataToCPU = 0.0;

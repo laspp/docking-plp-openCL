@@ -23,6 +23,8 @@ class WorkerCL {
 
     void getStringVectorForKernels();
 
+    Batch& batch;
+
 public:
 
     // NOTE: when changing kernels enum CHANGE KernelNames strings in cpp ALSO, they MUST MATCH!
@@ -93,13 +95,28 @@ public:
     size_t g_kernelFinalize[1];
     size_t l_kernelFinalize[1];
 
-    WorkerCL(Data& data, Batch& batch);
+    // Timers:
+    double t_programRunTime = 0.0;
+    double tot_programRunTime = 0.0;
+    double t_workerCreation = 0.0;
+    double tot_workerCreation = 0.0;
+    double t_kernelCreation = 0.0;
+    double tot_kernelCreation = 0.0;
+    double t_tempRunTime = 0.0;
+    double tot_tempRunTime = 0.0;
+    double* runTimes;
+    uint32_t run = 0;
+
+    WorkerCL(Batch& batchRef);
     ~WorkerCL();
 
-    void initMemory(Data& data, Batch& batch);
-    void kernelCreation(Data& data, Batch& batch);
-    void kernelSetArgs(Data& data, Batch& batch);
-    void initialStep(Data& data, Batch& batch);
-    void runStep(Data& data, Batch& batch);
-    void finalize(Data& data, Batch& batch);
+    void initMemory(Data& data);
+    void kernelCreation();
+    void kernelSetArgs(Data& data);
+    void initialStep(Data& data);
+    void runStep(Data& data);
+    void finalize(Data& data);
+    void releaseMemory();
+
+    void saveProgramTimersToFile(std::string path);
 };
