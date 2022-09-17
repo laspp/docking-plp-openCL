@@ -5,8 +5,10 @@
     "deviceIndex": 0,
     "localSize": 256,
     "timeKernels": 0,
+    "timeProgram": 0,
     "trackScores": 0,
     "outputOnlyBestN": 3,
+    "fixedSeed": 0,
     "jobs": [
         "export_6O0K_n25.bin",
         "export_6O0K_n50.bin",

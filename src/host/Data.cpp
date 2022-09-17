@@ -260,10 +260,17 @@ void Data::initSeed() {
     seed = new cl_ulong[parameters.maxThreads];
     seedSize = sizeof(cl_ulong) * parameters.maxThreads;
 
-    srand((unsigned) time(NULL));
-	for (int i = 0; i < parameters.maxThreads; i++) {
-		seed[i] = rand();
-	}
+    if(batch.fixedSeed == 0) {
+        srand((unsigned) time(NULL));
+        for (int i = 0; i < parameters.maxThreads; i++) {
+            seed[i] = rand();
+        }
+    } else {
+        cl_ulong fixedSeed = batch.fixedSeed - 1; // so seed can be fixed to zero
+        for (int i = 0; i < parameters.maxThreads; i++) {
+            seed[i] = fixedSeed;
+        }
+    }
 }
 
 inline int index2D(int l, int x, int y) {

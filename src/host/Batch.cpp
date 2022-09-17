@@ -31,6 +31,7 @@ void parseBatch(int argc, char* argv[], Batch& batch) {
         batchJson["timeProgram"].get<uint32_t>(),
         batchJson["trackScores"].get<uint32_t>(),
         batchJson["outputOnlyBestN"].get<uint32_t>(),
+        batchJson["fixedSeed"].get<uint32_t>(),
         batchJson["jobs"].get<std::vector<std::string>>()
     };
     

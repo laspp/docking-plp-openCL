@@ -13,6 +13,7 @@ struct Batch {
     uint32_t timeProgram;
     uint32_t trackScores;
     uint32_t outputOnlyBestN;
+    uint32_t fixedSeed;
     std::vector<std::string> jobs;
 };
 
