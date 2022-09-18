@@ -1,0 +1,23 @@
+{
+    "inputPath": "input",
+    "outputPath": "test/temp",
+    "platformIndex": 0,
+    "deviceIndex": 0,
+    "localSize": 256,
+    "timeKernels": 0,
+    "timeProgram": 0,
+    "trackScores": 0,
+    "outputOnlyBestN": 0,
+    "fixedSeed": 1,
+    "jobs": [
+        "advanced100r.bin","simple100r.bin","simple5r.bin", "advanced1r.bin",
+        "export_3CS9_n25.bin","export_3CS9_n50.bin","export_3CS9_n75.bin",
+        "export_3CS9_n100.bin","export_3CS9_n150.bin","export_3CS9_n200.bin",
+        "export_3NJG_n25.bin","export_3NJG_n50.bin","export_3NJG_n75.bin",
+        "export_3NJG_n100.bin","export_3NJG_n150.bin","export_3NJG_n200.bin",
+        "export_3PTB_n25.bin","export_3PTB_n50.bin","export_3PTB_n75.bin",
+        "export_3PTB_n100.bin","export_3PTB_n150.bin","export_3PTB_n200.bin",
+        "export_6O0K_n25.bin","export_6O0K_n50.bin","export_6O0K_n75.bin",
+        "export_6O0K_n100.bin","export_6O0K_n150.bin","export_6O0K_n200.bin"
+    ]
+}
