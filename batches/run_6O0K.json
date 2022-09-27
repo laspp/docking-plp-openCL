@@ -1,0 +1,19 @@
+{
+    "inputPath": "input",
+    "outputPath": "output",
+    "platformIndex": 0,
+    "deviceIndex": 0,
+    "localSize": 256,
+    "timeKernels": 0,
+    "trackScores": 0,
+    "outputOnlyBestN": 3,
+    "jobs": [
+        "export_6O0K_n25.bin",
+        "export_6O0K_n50.bin",
+        "export_6O0K_n75.bin",
+        "export_6O0K_n100.bin",
+        "export_6O0K_n150.bin",
+        "export_6O0K_n200.bin"
+
+    ]
+}

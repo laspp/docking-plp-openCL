@@ -163,6 +163,7 @@ class Data {
     void saveScoresToFile(std::string path);
 
     Batch& batch;
+    std::string outputFileName;
 
     // Score:
     uint32_t numOfRunsDone = 0;
@@ -208,6 +209,7 @@ public:
     uint32_t bestScoreSize;
     CL_STRUCT_FLOAT* score;
     uint32_t scoreSize;
+    uint32_t convergenceFlag = 0;
     CL_STRUCT_INT* popNewIndex;
     uint32_t popNewIndexSize;
     cl_ulong* seed;
@@ -248,6 +250,8 @@ public:
     double tot_kernelSort = 0.0;
     double t_kernelNormalize = 0.0;
     double tot_kernelNormalize = 0.0;
+    double t_kernelCheckConvergence = 0.0;
+    double tot_kernelCheckConvergence = 0.0;
     double t_kernelCreateNew = 0.0;
     double tot_kernelCreateNew = 0.0;
     double t_kernelFinalize = 0.0;

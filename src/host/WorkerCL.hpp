@@ -37,6 +37,7 @@ public:
         kernelNormalize,
         kernelCreateNew,
         kernelFinalize,
+        kernelCheckConvergence,
         NUM_KERNELS
     };
     static const std::vector<std::string> KernelNames;
@@ -66,6 +67,9 @@ public:
     cl_mem cl_receptorIndex;
     cl_mem cl_numGoodReceptors;
     cl_mem cl_bestScore;
+    cl_mem cl_bestScoreOld;
+    cl_mem cl_convergence;
+    cl_mem cl_convergenceFlag;
     cl_mem cl_popNewIndex;
     cl_mem cl_ligandAtomPairsForClash;
 
@@ -92,6 +96,8 @@ public:
     size_t l_kernelCreateNew[2];
     size_t g_kernelFinalize[1];
     size_t l_kernelFinalize[1];
+    size_t g_kernelCheckConvergence[1];
+    size_t l_kernelCheckConvergence[1];
 
     WorkerCL(Data& data, Batch& batch);
     ~WorkerCL();

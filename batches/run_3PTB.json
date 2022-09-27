@@ -1,0 +1,18 @@
+{
+    "inputPath": "input",
+    "outputPath": "output",
+    "platformIndex": 0,
+    "deviceIndex": 0,
+    "localSize": 256,
+    "timeKernels": 0,
+    "trackScores": 0,
+    "outputOnlyBestN": 3,
+    "jobs": [
+        "export_3PTB_n25.bin",
+        "export_3PTB_n50.bin",
+        "export_3PTB_n75.bin",
+        "export_3PTB_n100.bin",
+        "export_3PTB_n150.bin",
+        "export_3PTB_n200.bin"
+    ]
+}

@@ -1,5 +1,6 @@
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <omp.h>
 #include "host/Batch.hpp"
 #include "host/dbgl.hpp"
@@ -8,38 +9,62 @@
 
 int main(int argc, char* argv[]) {
 
-    double programStartTime = omp_get_wtime();
 
+    int cycle_limit=0;
+    if (argc >= 3) {
+        //Read cycle limit (number of iterations from command line arguments)
+        std::istringstream iss( argv[2] );
+        int val;
+        if (iss >> val)
+        {
+            cycle_limit=val;
+        }
+
+    }
+    double programStartTime = omp_get_wtime();
+    double loopStartTime, loopEndTime;
     Batch batch;
     parseBatch(argc, argv, batch);
-
     // WorkerCL scope
+    for(auto  & job : batch.jobs)
     {
-        Data data(batch.inputPath + "/" + batch.jobs.at(0), batch);
-        data.parameters.ncycles *= 10;// REMOVE THIS
+        std::string fileName=job;
+        Data data(batch.inputPath + "/" + fileName, batch);
+        if (cycle_limit>0){
+            data.parameters.ncycles = cycle_limit;
+        }
+        else{
+            //default cycle limit
+            data.parameters.ncycles=10000;
+        }
+        //Testing nconvergence parameter, config is read from binary
+        //data.parameters.nconvergence=30;
         WorkerCL workerCL(data, batch);
-
-        workerCL.initMemory(data, batch);
         workerCL.kernelCreation(data, batch);
+        loopStartTime = omp_get_wtime(); 
+        workerCL.initMemory(data, batch);
         workerCL.kernelSetArgs(data, batch);
-
         workerCL.initialStep(data, batch);
-
-        dbg("0/" + std::to_string(data.parameters.ncycles));
+        //dbg("0/" + std::to_string(data.parameters.ncycles));
+        int cyclesDone=0;
         for(int i=0; i < data.parameters.ncycles; i++) {
             
             workerCL.runStep(data, batch);
 
-            if(i % 50 == 0) {
+            cyclesDone++;
+            /*if(i % 50 == 0) {
                 dbg("\r" + std::to_string(i) + "/" + std::to_string(data.parameters.ncycles));
                 std::cout << std::flush;
-            }
+            }*/
+            if(cycle_limit==0 && data.convergenceFlag) break;
         }
 
         workerCL.finalize(data, batch);
-        
-	dbg("\r" + std::to_string(data.parameters.ncycles) + "/" + std::to_string(data.parameters.ncycles));
-	std::cout << std::endl;
+        loopEndTime = omp_get_wtime();
+        std::cout << fileName + "\t" + std::to_string(cyclesDone) + "\t" + std::to_string(data.parameters.nruns) + "\t" + std::to_string(loopEndTime - loopStartTime) << std::endl;    
+	//dbg("\r" + std::to_string(cyclesDone) + "/" + std::to_string(data.parameters.ncycles));
+	//std::cout << std::endl;
+    //dbgl("Per step per run time: " + std::to_string((loopEndTime - loopStartTime)/(cyclesDone*data.parameters.nruns)) + "s");
     }
     
     /*
@@ -55,7 +80,9 @@ int main(int argc, char* argv[]) {
             doWork();
     }
     */
-    dbgl("Program run time: " + std::to_string(omp_get_wtime() - programStartTime) + "s");
+    //dbgl("Loop run time: " + std::to_string((loopEndTime - loopStartTime)) + "s");
+    //dbgl("Program run time: " + std::to_string((omp_get_wtime() - programStartTime)) + "s");
+    
    
    return 0;
 }

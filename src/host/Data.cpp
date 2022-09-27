@@ -426,6 +426,13 @@ Data::Data(std::string file, Batch& batchRef) : batch(batchRef) {
 
     TIMER_START(t_dataPrep);
 
+    outputFileName = file;
+    size_t lastdot = outputFileName.find_last_of(".");
+    size_t lastslash = outputFileName.find_last_of("/");
+    if (!(lastdot == std::string::npos) && !(lastslash == std::string::npos))
+        outputFileName=outputFileName.substr(lastslash, lastdot-lastslash);
+
+
     FILE* File;
     openFileBinary(file, File);
 
@@ -628,11 +635,11 @@ void Data::saveResultsToFile(std::string path, int outputOnlyBestN) {
     // get current date:
     time_t curtime;
     time(&curtime);
-    std::string fileName = std::string(ctime(&curtime));
-    std::replace(fileName.begin(), fileName.end(), ':', '_');
-    std::replace(fileName.begin(), fileName.end(), '\n', '_');
+    //std::string fileName = std::string(ctime(&curtime));
+    //std::replace(fileName.begin(), fileName.end(), ':', '_');
+    //std::replace(fileName.begin(), fileName.end(), '\n', '_');
 
-    std::string completeFilePath = path + fileName + ".sdf";
+    std::string completeFilePath = path + outputFileName + ".sdf";
 
     // open file
     FILE *fout;
@@ -757,6 +764,7 @@ void Data::saveTimersToFile(std::string path) {
     fprintf(fout,"kernelPLP time,%lf\r\n", tot_kernelPLP);
     fprintf(fout,"kernelSort time,%lf\r\n", tot_kernelSort);
     fprintf(fout,"kernelNormalize time,%lf\r\n", tot_kernelNormalize);
+    fprintf(fout,"kernelCheckConvergence time,%lf\r\n", tot_kernelCheckConvergence);
     fprintf(fout,"kernelCreateNew time,%lf\r\n", tot_kernelCreateNew);
     fprintf(fout,"kernelFinalize time,%lf\r\n", tot_kernelFinalize);
 
