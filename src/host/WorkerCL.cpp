@@ -358,6 +358,9 @@ void WorkerCL::releaseMemory() {
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_receptorIndex));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_numGoodReceptors));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_bestScore));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_bestScoreOld));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_convergence));
+    CHECK_CL_ERROR(error = clReleaseMemObject(cl_convergenceFlag));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_popNewIndex));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtomPairsForClash));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_grid));

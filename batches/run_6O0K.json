@@ -8,8 +8,6 @@
     "trackScores": 0,
     "outputOnlyBestN": 3,
     "timeProgram": 0,
-    "trackScores": 0,
-    "outputOnlyBestN": 3,
     "fixedSeed": 0,
     "jobs": [
         "export_6O0K_n25.bin",

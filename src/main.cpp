@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
             if(cycle_limit==0 && data.convergenceFlag) break;
         }
 
-        workerCL.finalize(data, batch);
+        workerCL.finalize(data);
         loopEndTime = omp_get_wtime();
         std::cout << fileName + "\t" + std::to_string(cyclesDone) + "\t" + std::to_string(data.parameters.nruns) + "\t" + std::to_string(loopEndTime - loopStartTime) << std::endl;    
 	//dbg("\r" + std::to_string(cyclesDone) + "/" + std::to_string(data.parameters.ncycles));
