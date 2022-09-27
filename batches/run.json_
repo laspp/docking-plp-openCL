@@ -5,8 +5,10 @@
     "deviceIndex": 0,
     "localSize": 256,
     "timeKernels": 0,
+    "timeProgram": 0,
     "trackScores": 0,
     "outputOnlyBestN": 3,
+    "fixedSeed": 0,
     "jobs": [
         "advanced100r.bin","simple100r.bin","simple5r.bin", "advanced1r.bin"
     ]

@@ -25,7 +25,9 @@ int main(int argc, char* argv[]) {
     double loopStartTime, loopEndTime;
     Batch batch;
     parseBatch(argc, argv, batch);
-    // WorkerCL scope
+
+    WorkerCL workerCL(batch);
+
     for(auto  & job : batch.jobs)
     {
         std::string fileName=job;
@@ -34,22 +36,18 @@ int main(int argc, char* argv[]) {
             data.parameters.ncycles = cycle_limit;
         }
         else{
-            //default cycle limit
             data.parameters.ncycles=10000;
         }
-        //Testing nconvergence parameter, config is read from binary
         //data.parameters.nconvergence=30;
-        WorkerCL workerCL(data, batch);
-        workerCL.kernelCreation(data, batch);
-        loopStartTime = omp_get_wtime(); 
-        workerCL.initMemory(data, batch);
-        workerCL.kernelSetArgs(data, batch);
-        workerCL.initialStep(data, batch);
+        loopStartTime = omp_get_wtime();
+        workerCL.initMemory(data);
+        workerCL.kernelSetArgs(data);
+        workerCL.initialStep(data);
         //dbg("0/" + std::to_string(data.parameters.ncycles));
         int cyclesDone=0;
         for(int i=0; i < data.parameters.ncycles; i++) {
             
-            workerCL.runStep(data, batch);
+            workerCL.runStep(data);
 
             cyclesDone++;
             /*if(i % 50 == 0) {
@@ -65,6 +63,7 @@ int main(int argc, char* argv[]) {
 	//dbg("\r" + std::to_string(cyclesDone) + "/" + std::to_string(data.parameters.ncycles));
 	//std::cout << std::endl;
     //dbgl("Per step per run time: " + std::to_string((loopEndTime - loopStartTime)/(cyclesDone*data.parameters.nruns)) + "s");
+        workerCL.releaseMemory();
     }
     
     /*

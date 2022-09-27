@@ -6,21 +6,14 @@ OpenCL implementation of a docking algorithm based on PLP fitness function [1].
 
 ### Arnes HPC (V100)
 
-hpc-login.arnes.si
+login to hpc-login.arnes.si
 
 @hpc-login1 (not login2):
+ 
+ module load CUDA
+ module load CMake
 
-salloc -G1 --partition=gpu -n1
-
-ssh wnXYZ
-
-@wnXYZ:
-
-module load CUDA
-
-module load CMake
-
-./build_and_run.sh make 1
+srun --partition=gpu -G1 ./build_and_run.sh make 1 1000
 
 ### Windows
 

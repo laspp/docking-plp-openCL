@@ -6,3 +6,6 @@ build/
 output/*
 src/kernels/notes.txt
 src/kernels/tyche_i.cl
+test/temp
+test/time.txt
+run.sh

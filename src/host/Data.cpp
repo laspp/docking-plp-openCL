@@ -260,10 +260,17 @@ void Data::initSeed() {
     seed = new cl_ulong[parameters.maxThreads];
     seedSize = sizeof(cl_ulong) * parameters.maxThreads;
 
-    srand((unsigned) time(NULL));
-	for (int i = 0; i < parameters.maxThreads; i++) {
-		seed[i] = rand();
-	}
+    if(batch.fixedSeed == 0) {
+        srand((unsigned) time(NULL));
+        for (int i = 0; i < parameters.maxThreads; i++) {
+            seed[i] = rand();
+        }
+    } else {
+        cl_ulong fixedSeed = batch.fixedSeed - 1; // so seed can be fixed to zero
+        for (int i = 0; i < parameters.maxThreads; i++) {
+            seed[i] = fixedSeed;
+        }
+    }
 }
 
 inline int index2D(int l, int x, int y) {
@@ -745,8 +752,6 @@ void Data::saveTimersToFile(std::string path) {
     openFileC(completeFilePath, fout);
 
     fprintf(fout,"Data preparation time,%lf\r\n", tot_dataPrep);
-    fprintf(fout,"WorkerCLCreation time,%lf\r\n", tot_workerCreation);
-    fprintf(fout,"Kernel creation time,%lf\r\n", tot_kernelCreation);
     fprintf(fout,"Data to GPU time,%lf\r\n", tot_dataToGPU);
     fprintf(fout,"Data to CPU time,%lf\r\n", tot_dataToCPU);
     fprintf(fout,"Kernels set args time,%lf\r\n", tot_kernelSetArgs);

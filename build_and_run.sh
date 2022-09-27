@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: build_and_run.sh [ninja | make] [num_runs]
+# Usage: build_and_run.sh [ninja | make] [num_runs] [num_cycles]
 # Example: 
 # build_and_run.sh ninja 2
 # will build the solution with ninja and run test 2 times
