@@ -6,6 +6,7 @@
 __kernel void kernelInitGrid(constant parametersForGPU* parameters,
                     global GridPointGPU* grid,
                     global AtomGPU* receptorAtoms,
+                    global CoordGPU cavityGPU,
                     global int* numGoodReceptors,// one int
                     global int* receptorIndex) {
 
@@ -33,9 +34,23 @@ __kernel void kernelInitGrid(constant parametersForGPU* parameters,
 
         float coord[3];
         index3DtoCoords((int*)xyz, &ownGrid, (float*)coord);
-       
-        float score = 0.0f;
 
+        gridStepRadius=sqrt(ownGrid.gridStep[0]*ownGrid.gridStep[0]+ownGrid.gridStep[1]*ownGrid.gridStep[1]+ownGrid.gridStep[2]*ownGrid.gridStep[2]);
+
+        for(int i=0; i<parameters.cavityInfo.numCoords;i++){
+            
+            float cavityPoint[3];
+            cavityPoint[0]=cavityGPU[i].x;
+            cavityPoint[1]=cavityGPU[i].y;
+            cavityPoint[2]=cavityGPU[i].z;
+            d=distance2Points3(coord, cavityPoint);
+            if(d <= gridStepRadius/2){
+                grid[xyzID].csiteFlag=1;
+            }
+                
+        }
+
+        float score = 0.0f;
         for(int i = 0; i < (*numGoodReceptors); i++) {
 
             score += FplpActual((float*)coord, classID, &(receptorAtoms[receptorIndex[i]]));
