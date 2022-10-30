@@ -78,16 +78,18 @@ __kernel void kernelSort(constant parametersForGPU* parameters, global float* gl
 
         // Copy Back Sorted
         int nReplicates = parameters->nReplicates;
-        for(int i=startIndex; i < endIndex && i < size && i >= nReplicates; i++) {
+        for(int i=startIndex; i < endIndex && i < size; i++) {
 
-            int copyDestination = (int)localIndexes[step01 * popMaxSize + i];
+            if(i >= nReplicates) { // !!! DO NOT PUT INSIDE for() !!!
+                int copyDestination = (int)localIndexes[step01 * popMaxSize + i];
 
-            global float* individualCopy = getIndividual(popMaxSize, runID, copyDestination, chromStoreLen, globalPopulationsCopy);
-            global float* individual = getIndividual(popMaxSize, runID, i - nReplicates, chromStoreLen, globalPopulations);
-            
-            // Global Copy (Whole)
-            for(int j=0; j < chromStoreLen; j++) {
-                individual[j] = individualCopy[j];
+                global float* individualCopy = getIndividual(popMaxSize, runID, copyDestination, chromStoreLen, globalPopulationsCopy);
+                global float* individual = getIndividual(popMaxSize, runID, i - nReplicates, chromStoreLen, globalPopulations);
+                
+                // Global Copy (Whole)
+                for(int j=0; j < chromStoreLen; j++) {
+                    individual[j] = individualCopy[j];
+                }
             }
         }
     } else {
