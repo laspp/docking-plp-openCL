@@ -1,6 +1,8 @@
 #!/bin/bash
 
-commit="e3a3506"
+# testing using convergence checking
+# (for fixed num. of steps, add num. of steps as cmd. arg. at L41 (example: ./build/CmDockOpenCL ./test/test.json 1000))
+commit="806432e"
 
 req_file="./src/kernels/tyche_i.cl"
 req_folder="./test/temp"
@@ -36,7 +38,7 @@ echo ======================================
 
 if [ "$?" -eq "0" ];
 then
-    ./build/CmDockOpenCL ./test/test.json 1000
+    ./build/CmDockOpenCL ./test/test.json
 
     if [ "$?" -eq "0" ];
     then
