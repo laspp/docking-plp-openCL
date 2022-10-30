@@ -26,13 +26,16 @@ __kernel void kernelNormalize(constant parametersForGPU* parameters, global floa
     float sumSq = 0.0f;
     float tempScore;
 
-    for(int i=startIndex; i < endIndex && i < size; i++) {
-        
-        global float* individual = getIndividual(popMaxSize, runID, i, chromStoreLen, globalPopulations);
+    int tempII = localID;
+    while(tempII < size) {
+
+        global float* individual = getIndividual(popMaxSize, runID, tempII, chromStoreLen, globalPopulations);
         tempScore = individual[chromStoreLen - CHROM_SUBTRACT_FOR_SCORE];
 
         sum += tempScore;
         sumSq += tempScore * tempScore;
+
+        tempII += localSize;
     }
 
     // length localScore = 2 * localSize    [ sum | sumSq ]
