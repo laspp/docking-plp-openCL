@@ -51,27 +51,36 @@ __kernel void kernelSort(constant parametersForGPU* parameters, global float* gl
         }
     }
 
-    // Sort Local with bubble sort
-    if(endIndex <= size) {
-        bubblePopulationSort(startIndex, endIndex, localScore, localIndexes);
+    int bitonicLen = 1;
+    while (parameters->popMaxSize > bitonicLen) {
+        bitonicLen *= 2;
     }
 
-    // Merge Sort
-    // Reduce Local,  Adapted from: https://web.engr.oregonstate.edu/~mjb/cs575/Handouts/opencl.reduction.2pp.pdf
-    int currentLength = perThread;
-    int step01 = 1;
-    for (int offset = 1; offset < localSize; offset *= 2) {
-        int mask = 2 * offset - 1;
-        barrier(CLK_LOCAL_MEM_FENCE);
-        if ((localID & mask) == 0) {
-            mergePopulationSort(startIndex, currentLength, step01, popMaxSize, size, localScore, localIndexes);
-        }
-        currentLength *= 2;
-        step01 = (step01 == 0) ? 1 : 0;
+    int tempII = popMaxSize + localID;
+    while(tempII < bitonicLen) {
+
+        localScore[tempII] = BIG_SCORE_BIGGER;
+
+        tempII += localSize;
+    }
+    bitonicMergeSort(localSize, localID, bitonicLen, localScore, localIndexes);
+    // Move to good position:
+    local float* localScoreDest = &(localScore[popMaxSize]);
+    local ushort* localIndexesDest = &(localIndexes[popMaxSize]);
+
+    int popMaxSizeM1 = popMaxSize - 1;
+    tempII = localID;
+    while(tempII < popMaxSize) {
+
+        int newII = popMaxSizeM1 - tempII;
+        localScoreDest[newII] = localScore[tempII];
+        localIndexesDest[newII] = localIndexes[tempII];
+
+        tempII += localSize;
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    step01 = (step01 == 0) ? 1 : 0;// Get Back Destination step01;
+    int step01 = 1;// Get Back Destination step01;
 
     if(PNI == 0) {
         // Initial Step ONLY

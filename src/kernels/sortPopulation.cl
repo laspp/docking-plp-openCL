@@ -1,72 +1,51 @@
 #ifndef SORT_POPULATIONS_CL_H
 #define SORT_POPULATIONS_CL_H
 
-// Adapter from: https://www.geeksforgeeks.org/bubble-sort/
-void bubblePopulationSort(int startIndex, int endIndex, local float* array, local ushort* indexes) {
-    
-    local float* arraySetToZero = &(array[startIndex]);
-    local ushort* indexesSetToZero = &(indexes[startIndex]);
-    int n = endIndex - startIndex;
+// Based on: https://www.youtube.com/watch?v=w544Rn4KC8I
+// sortLength length must be 2^n
+// Bitonic sort is not a stable sorting algorithm. Previously used sorting algorithm was stable, so possible differences.
+void bitonicMergeSort(const uint localSize, const uint localID, const int sortLength, local float* array, local ushort* indexes) {
 
-    float tempRW;
-    ushort tempI;
-    for (int i = 0; i < n-1; i++) {
-        for (int j = 0; j < n-i-1; j++) {
-            if (arraySetToZero[j] < arraySetToZero[j+1]) {
-                // Swap Values
-                tempRW = arraySetToZero[j];
-                arraySetToZero[j] = arraySetToZero[j+1];
-                arraySetToZero[j+1] = tempRW;
-                // Swap Indexes
-                tempI = indexesSetToZero[j];
-                indexesSetToZero[j] = indexesSetToZero[j+1];
-                indexesSetToZero[j+1] = tempI;
+    // Stages: (arrows in same stage group have same sortDirection
+    uint distance = 1; // initial arrow distance of a stage aka. compare distance, 1 is the minimum
+    while(distance < sortLength) { // last distance is sortLength / 2.
+
+        // Passes: (distance reduces by half every pass)
+        uint tempDistance = distance;
+        while(tempDistance > 0) { // last distance is 1
+
+            // Arrows:
+            uint tempLocalID = localID;
+            while(tempLocalID < sortLength / 2) { // one arrow compares 2 numbers -> half as many arrows as numbers needed
+                
+                int groupID = tempLocalID / tempDistance; // ID of a group
+                int arrowID = tempLocalID % tempDistance; // ID of an arrow inside it's group
+                int sortDirection = (tempLocalID / distance) & 1; // & 1 == % 2, changing sort direction of stage groups ^v^v^v^
+
+                int aIndex = groupID * (tempDistance << 1) + arrowID; // Index of fist element
+                int bIndex = aIndex + tempDistance; // Index of second element
+
+                barrier(CLK_LOCAL_MEM_FENCE);
+
+                float a = array[aIndex];
+                float b = array[bIndex];
+
+                if(a < b == sortDirection) {
+                    // Swap:
+                    array[bIndex] = a;
+                    array[aIndex] = b;
+                    ushort ai = indexes[aIndex];
+                    ushort bi = indexes[bIndex];
+                    indexes[bIndex] = ai;
+                    indexes[aIndex] = bi;
+                }
+                tempLocalID += localSize;
             }
+            tempDistance >>= 1;
         }
+        distance <<= 1;
     }
-}
-
-// Adapter from: https://www.geeksforgeeks.org/merge-sort/
-void mergePopulationSort(int startIndex, int length, int step01, int popMaxSize, int size, local float* array, local ushort* indexes) {
-    // step01 == 1, put in second part od array
-    int source = (step01 == 0) ? 1 : 0;
-    int destination = step01;
-
-    int currentLeft = startIndex;
-    int currentRight = startIndex + length;
-
-    int endLeft = currentRight;
-    int endRight = currentRight + length;
-
-    int k = startIndex;
-
-    while (currentLeft < endLeft && currentLeft < size && currentRight < endRight && currentRight < size) {
-        if (array[source*popMaxSize+currentLeft] >= array[source*popMaxSize+currentRight]) {
-            array[destination*popMaxSize+k] = array[source*popMaxSize+currentLeft];
-            indexes[destination*popMaxSize+k] = indexes[source*popMaxSize+currentLeft];
-            currentLeft++;
-        }
-        else {
-            array[destination*popMaxSize+k] = array[source*popMaxSize+currentRight];
-            indexes[destination*popMaxSize+k] = indexes[source*popMaxSize+currentRight];
-            currentRight++;
-        }
-        k++;
-    }
-    
-    while (currentLeft < endLeft && currentLeft < size) {
-        array[destination*popMaxSize+k] = array[source*popMaxSize+currentLeft];
-        indexes[destination*popMaxSize+k] = indexes[source*popMaxSize+currentLeft];
-        currentLeft++;
-        k++;
-    }
-
-    while (currentRight < endRight && currentRight < size) {
-        array[destination*popMaxSize+k] = array[source*popMaxSize+currentRight];
-        indexes[destination*popMaxSize+k] = indexes[source*popMaxSize+currentRight];
-        currentRight++;
-        k++;
-    }
+    barrier(CLK_LOCAL_MEM_FENCE);
 }
 
 #endif
