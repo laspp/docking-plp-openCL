@@ -316,8 +316,10 @@ void WorkerCL::runStep(Data& data) {
     if(data.CYCLE_LIMIT == 0) {
         TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelCheckConvergence], 1, NULL, g_kernelCheckConvergence, l_kernelCheckConvergence, 0, NULL, NULL), data.t_kernelCheckConvergence, data.tot_kernelCheckConvergence);
     }
-    // Read best score (!!! NON blocking !!!)
-    TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_bestScore, CL_FALSE, 0, data.bestScoreSize, data.score, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
+    if(batch.trackScores == 1) {
+        // Read best score (!!! NON blocking !!!)
+        TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_bestScore, CL_FALSE, 0, data.bestScoreSize, data.score, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
+    }
     // Read Convergence Flag (blocking)
     TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_convergenceFlag, CL_TRUE, 0, data.convergenceFlagSize, &data.convergenceFlag, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
     if(batch.trackScores == 1) {
@@ -329,6 +331,8 @@ void WorkerCL::finalize(Data& data) {
 
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelFinalize], 1, NULL, g_kernelFinalize, l_kernelFinalize, 0, NULL, NULL), data.t_kernelFinalize, data.tot_kernelFinalize);
 
+    // Read best score (!!! NON blocking !!!)
+    TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_bestScore, CL_FALSE, 0, data.bestScoreSize, data.score, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
     // Read solution (blocking) (read only as much as needed)
     TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_ligandAtomsSmallResult, CL_TRUE, 0, data.ligandAtomsSmallResultSize, data.ligandAtomsSmallGlobalAll, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
 }
