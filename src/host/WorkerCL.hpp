@@ -38,8 +38,8 @@ public:
         kernelSort,
         kernelNormalize,
         kernelCreateNew,
-        kernelFinalize,
         kernelCheckConvergence,
+        kernelFinalize,
         NUM_KERNELS
     };
     static const std::vector<std::string> KernelNames;
@@ -96,10 +96,10 @@ public:
     size_t l_kernelNormalize[2];
     size_t g_kernelCreateNew[2];
     size_t l_kernelCreateNew[2];
-    size_t g_kernelFinalize[1];
-    size_t l_kernelFinalize[1];
     size_t g_kernelCheckConvergence[1];
     size_t l_kernelCheckConvergence[1];
+    size_t g_kernelFinalize[1];
+    size_t l_kernelFinalize[1];
 
     // Timers:
     double t_programRunTime = 0.0;

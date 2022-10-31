@@ -1,13 +1,13 @@
 #include <clStructs.h>
 #include <constants.cl>
 
-__kernel void kernelCheckConvergence(constant parametersForGPU* parameters, global uint* convergenceAchieved, global uint* iConvergence, global float* oldBestScore, global float* bestScore, local unsigned int *tmp) {
+__kernel void kernelCheckConvergence(constant parametersForGPU* parameters, global uint* convergenceAchieved, global uint* iConvergence, global float* oldBestScore, global float* bestScore, local uint* localTmp) {
 
-    int tid=get_local_id(ID_1D);
+    int localID=get_local_id(ID_1D);
     int localSize=get_local_size(ID_1D);
 
-    tmp[tid]=0;
-    /*if(tid==0){
+    localTmp[localID]=0;
+    /*if(localID==0){
     //printf("CHECK CONVERGENCE\n");
     for (int i=0;i<parameters->nruns;i++)
             printf("%3.2f %3.2f (%d)\t", bestScore[i], oldBestScore[i], iConvergence[i]);
@@ -15,7 +15,7 @@ __kernel void kernelCheckConvergence(constant parametersForGPU* parameters, glob
         printf("\n"); 
     }*/
     barrier(CLK_LOCAL_MEM_FENCE);
-    for(int run=tid; run < parameters->nruns; run+=localSize){
+    for(int run=localID; run < parameters->nruns; run+=localSize){
         if (bestScore[run] < oldBestScore[run]){            
             iConvergence[run]=0;
             oldBestScore[run]=bestScore[run];      
@@ -26,31 +26,31 @@ __kernel void kernelCheckConvergence(constant parametersForGPU* parameters, glob
     }
     barrier(CLK_GLOBAL_MEM_FENCE);
     unsigned int sum = 0;
-    int run = tid;
+    int run = localID;
     while( run < parameters->nruns )
 	{
 		sum += iConvergence[run];
 		run += localSize;
 	}
-	tmp[tid] = sum;
+	localTmp[localID] = sum;
     int floorPow2 = exp2(log2((float)localSize));
     if (localSize != floorPow2)										
 	{
-		if ( tid >= floorPow2 )
-            tmp[tid - floorPow2] += tmp[tid];
+		if ( localID >= floorPow2 )
+            localTmp[localID - floorPow2] += localTmp[localID];
 		barrier(CLK_LOCAL_MEM_FENCE);
     }
 
 	for(int i = (floorPow2>>1); i>0; i >>= 1) 
 	{
-		if(tid < i) 
-			tmp[tid] += tmp[tid + i];
+		if(localID < i) 
+			localTmp[localID] += localTmp[localID + i];
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
     barrier(CLK_LOCAL_MEM_FENCE);
-	if(tid == 0){
-        convergenceAchieved[0]=(tmp[0]==parameters->nruns*parameters->nconvergence)?1:0;
-        /*printf("Converged: %d/%d | %d %d\n",tmp[0],parameters->nruns*parameters->nconvergence,parameters->nruns,parameters->nconvergence);
+	if(localID == 0){
+        convergenceAchieved[0]=(localTmp[0]==parameters->nruns*parameters->nconvergence)?1:0;
+        /*printf("Converged: %d/%d | %d %d\n",localTmp[0],parameters->nruns*parameters->nconvergence,parameters->nruns,parameters->nconvergence);
         printf("END\n");
         for (int i=0;i<parameters->nruns;i++)
             printf("%d", iConvergence[i]);

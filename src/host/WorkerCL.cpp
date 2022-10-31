@@ -24,8 +24,8 @@ const std::vector<std::string> WorkerCL::KernelNames = {
     "kernelSort",
     "kernelNormalize",
     "kernelCreateNew",
-    "kernelFinalize",
-    "kernelCheckConvergence"
+    "kernelCheckConvergence",
+    "kernelFinalize"
 };
 
 void WorkerCL::getStringVectorForKernels() {
@@ -141,20 +141,14 @@ void WorkerCL::initMemory(Data& data) {
     CHECK_CL_ERROR(cl_receptorIndex = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.receptorIndexSize, data.receptorIndex, &error));
     CHECK_CL_ERROR(cl_numGoodReceptors = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.numGoodReceptorsSize, &(data.numGoodReceptors), &error));
     CHECK_CL_ERROR(cl_bestScore = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.bestScoreSize, data.bestScore, &error));
-    
     CHECK_CL_ERROR(cl_bestScoreOld = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.bestScoreSize, data.bestScore, &error));
-    
-    //initialize a flag array of zeroes for tracking convergence and copy to GPU
-    unsigned int *convergence = new unsigned int[data.parameters.nruns]();
-    CHECK_CL_ERROR(cl_convergence = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.parameters.nruns*sizeof(unsigned int), convergence, &error));
-    CHECK_CL_ERROR(cl_convergenceFlag = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(unsigned int), NULL, &error));
-    
+    CHECK_CL_ERROR(cl_convergence = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.convergenceSize, data.convergence, &error));
+    CHECK_CL_ERROR(cl_convergenceFlag = clCreateBuffer(context, CL_MEM_READ_WRITE, data.convergenceFlagSize, NULL, &error));
     CHECK_CL_ERROR(cl_popNewIndex = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.popNewIndexSize, data.popNewIndex, &error));
     CHECK_CL_ERROR(cl_ligandAtomPairsForClash = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.ligandAtomPairsForClashSize, data.ligandAtomPairsForClash, &error));
     CHECK_CL_ERROR(cl_grid = clCreateBuffer(context, CL_MEM_READ_WRITE, data.gridSize, NULL, &error));
 
     TIMER_END(data.t_dataToGPU, data.tot_dataToGPU);
-    delete convergence;
 }
 
 void WorkerCL::kernelCreation() {
@@ -240,7 +234,7 @@ void WorkerCL::kernelSetArgs(Data& data) {
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelCheckConvergence], 2, sizeof(cl_mem), (void *)&cl_convergence));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelCheckConvergence], 3, sizeof(cl_mem), (void *)&cl_bestScoreOld));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelCheckConvergence], 4, sizeof(cl_mem), (void *)&cl_bestScore));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelCheckConvergence], 5, data.LOCAL_SIZE*sizeof(cl_float), NULL));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelCheckConvergence], 5, data.LOCAL_SIZE * sizeof(cl_uint), NULL));
 
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 0, sizeof(cl_mem), (void *)&cl_parameters));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 1, sizeof(cl_mem), (void *)&cl_globalPopulations));
@@ -322,15 +316,17 @@ void WorkerCL::runStep(Data& data) {
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelPLP], 2, NULL, g_kernelPLP, l_kernelPLP, 0, NULL, NULL), data.t_kernelPLP, data.tot_kernelPLP);
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelSort], 2, NULL, g_kernelSort, l_kernelSort, 0, NULL, NULL), data.t_kernelSort, data.tot_kernelSort);
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelNormalize], 2, NULL, g_kernelNormalize, l_kernelNormalize, 0, NULL, NULL), data.t_kernelNormalize, data.tot_kernelNormalize);
-    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelCheckConvergence], 1, NULL, g_kernelCheckConvergence, l_kernelCheckConvergence, 0, NULL, NULL), data.t_kernelCheckConvergence, data.tot_kernelCheckConvergence);
-
-    // Read best score (blocking)
-    TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_bestScore, CL_TRUE, 0, data.bestScoreSize, data.score, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
+    
+    if(data.CYCLE_LIMIT == 0) {
+        TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelCheckConvergence], 1, NULL, g_kernelCheckConvergence, l_kernelCheckConvergence, 0, NULL, NULL), data.t_kernelCheckConvergence, data.tot_kernelCheckConvergence);
+    }
+    // Read best score (!!! NON blocking !!!)
+    TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_bestScore, CL_FALSE, 0, data.bestScoreSize, data.score, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
+    // Read Convergence Flag (blocking)
+    TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_convergenceFlag, CL_TRUE, 0, data.convergenceFlagSize, &data.convergenceFlag, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
     if(batch.trackScores == 1) {
         data.trackScore();
     }
-    // Read Convergence Flag (blocking)
-    TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_convergenceFlag, CL_TRUE, 0, sizeof(unsigned int), &data.convergenceFlag, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
 }
 
 void WorkerCL::finalize(Data& data) {

@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     for(auto  & job : batch.jobs)
     {
         std::string fileName=job;
-        Data data(batch.inputPath + "/" + fileName, batch);
+        Data data(batch.inputPath + "/" + fileName, batch, cycle_limit);
         if (cycle_limit>0){
             data.parameters.ncycles = cycle_limit;
         }

@@ -172,6 +172,7 @@ class Data {
 public:
 
     const uint32_t LOCAL_SIZE = 256;
+    const uint32_t CYCLE_LIMIT;
 
     // Stack:
     parametersForGPU parameters;
@@ -209,7 +210,10 @@ public:
     uint32_t bestScoreSize;
     CL_STRUCT_FLOAT* score;
     uint32_t scoreSize;
-    uint32_t convergenceFlag = 0;
+    cl_uint* convergence;
+    uint32_t convergenceSize;
+    cl_uint convergenceFlag;
+    uint32_t convergenceFlagSize;
     CL_STRUCT_INT* popNewIndex;
     uint32_t popNewIndexSize;
     cl_ulong* seed;
@@ -246,14 +250,14 @@ public:
     double tot_kernelSort = 0.0;
     double t_kernelNormalize = 0.0;
     double tot_kernelNormalize = 0.0;
-    double t_kernelCheckConvergence = 0.0;
-    double tot_kernelCheckConvergence = 0.0;
     double t_kernelCreateNew = 0.0;
     double tot_kernelCreateNew = 0.0;
+    double t_kernelCheckConvergence = 0.0;
+    double tot_kernelCheckConvergence = 0.0;
     double t_kernelFinalize = 0.0;
     double tot_kernelFinalize = 0.0;
 
-    Data(std::string file, Batch& batchRef);
+    Data(std::string file, Batch& batchRef, uint32_t cycle_limit);
     ~Data();
 
     void trackScore();

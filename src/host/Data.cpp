@@ -429,7 +429,7 @@ void Data::initLigandAtomPairsForClash() {
     delete[] atomPairIndexes;
 }
 
-Data::Data(std::string file, Batch& batchRef) : batch(batchRef) {
+Data::Data(std::string file, Batch& batchRef, uint32_t cycle_limit) : batch(batchRef), CYCLE_LIMIT(cycle_limit) {
 
     TIMER_START(t_dataPrep);
 
@@ -567,6 +567,10 @@ Data::Data(std::string file, Batch& batchRef) : batch(batchRef) {
     bestScoreSize = sizeof(CL_STRUCT_FLOAT) * parameters.nruns;
     score = new CL_STRUCT_FLOAT[parameters.nruns];
     scoreSize = sizeof(CL_STRUCT_FLOAT) * parameters.nruns;
+    convergence = new cl_uint[parameters.nruns](); //initialize a flag array of zeroes for tracking convergence (must be copied to GPU)
+    convergenceSize = sizeof(cl_uint) * parameters.nruns;
+    convergenceFlag = 0;
+    convergenceFlagSize = sizeof(cl_uint);
     popNewIndex = new CL_STRUCT_INT[2];
     popNewIndexSize = sizeof(CL_STRUCT_INT) * 2;
     popNewIndex[0] = (CL_STRUCT_INT)0;
@@ -631,6 +635,7 @@ Data::~Data() {
     delete[] receptorIndex;
     delete[] bestScore;
     delete[] score;
+    delete[] convergence;
     delete[] popNewIndex;
     delete[] seed;
     delete[] ligandAtomPairsForClash;
@@ -758,7 +763,7 @@ void Data::saveTimersToFile(std::string path) {
     double totalKernelTime = tot_kernelInit + tot_kernelInit2 + tot_kernelInit3 + tot_kernelInitGrid
                             + tot_kernelSyncToModel + tot_kernelPLP
                             + tot_kernelSort + tot_kernelNormalize
-                            + tot_kernelCreateNew
+                            + tot_kernelCreateNew + tot_kernelCheckConvergence
                             + tot_kernelFinalize;// +...
     fprintf(fout,"Total Kernel run time,%lf\r\n", totalKernelTime);
     fprintf(fout,"kernelInit time,%lf\r\n", tot_kernelInit);
@@ -769,8 +774,8 @@ void Data::saveTimersToFile(std::string path) {
     fprintf(fout,"kernelPLP time,%lf\r\n", tot_kernelPLP);
     fprintf(fout,"kernelSort time,%lf\r\n", tot_kernelSort);
     fprintf(fout,"kernelNormalize time,%lf\r\n", tot_kernelNormalize);
-    fprintf(fout,"kernelCheckConvergence time,%lf\r\n", tot_kernelCheckConvergence);
     fprintf(fout,"kernelCreateNew time,%lf\r\n", tot_kernelCreateNew);
+    fprintf(fout,"kernelCheckConvergence time,%lf\r\n", tot_kernelCheckConvergence);
     fprintf(fout,"kernelFinalize time,%lf\r\n", tot_kernelFinalize);
 
     // close
