@@ -3,13 +3,16 @@
 
 #include <SyncToModel.cl>
 
-__kernel void kernelFinalize(constant parametersForGPU* parameters, global float* globalPopulations,
+__kernel void kernelFinalize(constant parametersForGPU* parameters, global float* globalPopulationsBase,
                     global AtomGPUsmall* ligandAtomsSmallGlobalAll,
                     global DihedralRefDataGPU* dihedralRefData,
                     global AtomGPUsmall* ligandAtomsSmallResult,
-                    global AtomGPU* ligandAtoms) {
+                    global AtomGPU* ligandAtoms,
+                    global int* popNewIndex) {
 
     uint globalID=get_global_id(ID_1D);
+
+    global float* globalPopulations = &(globalPopulationsBase[popNewIndex[POPULATION_PLACE] * parameters->globalPopulationsSize]); // get population place
 
     // LIMIT: !!! nRuns < popMaxSize !!!
 

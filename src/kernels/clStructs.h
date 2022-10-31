@@ -16,6 +16,14 @@
 
 #define TOTAL_PLP_CLASSES 6
 
+enum POPULATION_ENUM {
+    POPULATION_INDEX_START,
+    POPULATION_INDEX_END,
+    POPULATION_PLACE,
+    NUM_OF_POPULATION_ENUM
+};
+typedef enum POPULATION_ENUM POPULATION_ENUM;
+
 typedef struct CoordGPU_t {
     CL_STRUCT_FLOAT x;
     CL_STRUCT_FLOAT y;
@@ -112,6 +120,10 @@ typedef struct parametersForGPU_t {
     CL_STRUCT_INT numUniqueAtom1PairsForClash;
     // Grid
     GridGPU grid;
+    // Bitonic merge sort:
+    CL_STRUCT_INT sortLength;
+    CL_STRUCT_INT localScoreArrayLength;
+    CL_STRUCT_INT globalPopulationsSize;
 } parametersForGPU;
 
 typedef struct AtomGPU_t {

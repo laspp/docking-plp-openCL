@@ -6,7 +6,7 @@
 
 __kernel void kernelPLP(constant parametersForGPU* parameters,
                     global AtomGPUsmall* ligandAtomsSmallGlobalAll,
-                    global float* globalPopulations,
+                    global float* globalPopulationsBase,
                     global int* popNewIndex,
                     global LigandAtomPairsForClash* ligandAtomPairsForClash,
                     global DihedralRefDataGPU* dihedralRefData,
@@ -16,15 +16,17 @@ __kernel void kernelPLP(constant parametersForGPU* parameters,
     uint runID=get_global_id(RUN_ID_2D);
     uint individualID=get_global_id(INDIVIDUAL_ID_2D);
 
+    global float* globalPopulations = &(globalPopulationsBase[popNewIndex[POPULATION_PLACE] * parameters->globalPopulationsSize]); // get population place
+
     float score = 0.0f;
 
     // What part of population to Score (existing (only initial) or new pop) (ALL THREADS SAME PATH).
-    if(popNewIndex[0] != 0) {
+    if(popNewIndex[POPULATION_INDEX_START] != 0) {
         individualID += parameters->popSize;
     }
 
     // Score Individuals
-    if(individualID >= popNewIndex[0] && individualID < popNewIndex[1]) {
+    if(individualID >= popNewIndex[POPULATION_INDEX_START] && individualID < popNewIndex[POPULATION_INDEX_END]) {
 
         global AtomGPUsmall* ligandAtomsOwn = getAtomGPUsmallBase(parameters->popMaxSize, runID, individualID, parameters->ligandNumAtoms, ligandAtomsSmallGlobalAll);
 

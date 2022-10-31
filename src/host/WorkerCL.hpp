@@ -35,8 +35,8 @@ public:
         kernelInitGrid,
         kernelSyncToModel,
         kernelPLP,
-        kernelSort,
-        kernelNormalize,
+        kernelSortAndNormalize,
+        kernelFinishStep,
         kernelCreateNew,
         kernelCheckConvergence,
         kernelFinalize,
@@ -58,7 +58,6 @@ public:
     cl_mem cl_rngStates;
     cl_mem cl_parameters;
     cl_mem cl_globalPopulations;
-    cl_mem cl_globalPopulationsCopy;
     cl_mem cl_ligandAtoms;
     cl_mem cl_receptorAtoms;
     cl_mem cl_ligandBonds;
@@ -90,10 +89,10 @@ public:
     size_t l_kernelSyncToModel[2];
     size_t g_kernelPLP[2];
     size_t l_kernelPLP[2];
-    size_t g_kernelSort[2];
-    size_t l_kernelSort[2];
-    size_t g_kernelNormalize[2];
-    size_t l_kernelNormalize[2];
+    size_t g_kernelSortAndNormalize[2];
+    size_t l_kernelSortAndNormalize[2];
+    size_t g_kernelFinishStep[1];
+    size_t l_kernelFinishStep[1];
     size_t g_kernelCreateNew[2];
     size_t l_kernelCreateNew[2];
     size_t g_kernelCheckConvergence[1];

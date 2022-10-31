@@ -8,12 +8,14 @@
 
 __kernel void kernelCreateNew(global tyche_i_state* rngStates,
                     constant parametersForGPU* parameters,
-                    global float* globalPopulations,
+                    global float* globalPopulationsBase,
                     global int* equalsArray,
                     global int* popNewIndex) {
 
     uint runID=get_global_id(RUN_ID_2D);
     uint individualID=get_global_id(INDIVIDUAL_ID_2D);
+
+    global float* globalPopulations = &(globalPopulationsBase[popNewIndex[POPULATION_PLACE] * parameters->globalPopulationsSize]); // get population place
 
     if(individualID < parameters->nReplicatesNumThreads) {
         // Get RngState:
@@ -30,9 +32,9 @@ __kernel void kernelCreateNew(global tyche_i_state* rngStates,
         
         // Set New Start and End Index
         // (matters only the first time it is run, switch from initial to new pop)
-        if(runID == 0 && individualID == 0) {
-            popNewIndex[0] = popSize;
-            popNewIndex[1] = popSize + parameters->nReplicates;
+        if(runID == 0 && individualID == 0 && popNewIndex[POPULATION_INDEX_START] == 0) {
+            popNewIndex[POPULATION_INDEX_START] = popSize;
+            popNewIndex[POPULATION_INDEX_END] = popSize + parameters->nReplicates;
         }
 
         // Reset equalsArray

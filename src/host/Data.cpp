@@ -160,14 +160,19 @@ void Data::initParameres(Header& header, LigandFlex& ligandFlex, GAParams& gaPar
     parameters.grid.totalPLPClasses = (CL_STRUCT_INT)TOTAL_PLP_CLASSES;
 
     gridSize = sizeof(GridPointGPU) * parameters.grid.N;
+
+    parameters.sortLength = 1;
+    while (parameters.popMaxSize > parameters.sortLength) {
+        parameters.sortLength *= 2;
+    }
+    parameters.localScoreArrayLength = std::max((uint32_t)(parameters.popMaxSize), 2 * LOCAL_SIZE);
 }
 
 void Data::initPopulations(double** populationsFromFile) {
 
-    globalPopulations = new CL_STRUCT_FLOAT[parameters.nruns * parameters.popMaxSize * parameters.chromStoreLen];
-    globalPopulationsSize = sizeof(CL_STRUCT_FLOAT) * parameters.nruns * parameters.popMaxSize * parameters.chromStoreLen;
-    globalPopulationsCopy = new CL_STRUCT_FLOAT[parameters.nruns * parameters.popMaxSize * parameters.chromStoreLen];
-    globalPopulationsCopySize = sizeof(CL_STRUCT_FLOAT) * parameters.nruns * parameters.popMaxSize * parameters.chromStoreLen;
+    parameters.globalPopulationsSize = parameters.nruns * parameters.popMaxSize * parameters.chromStoreLen;
+    globalPopulations = new CL_STRUCT_FLOAT[2 * parameters.globalPopulationsSize];
+    globalPopulationsSize = sizeof(CL_STRUCT_FLOAT) * 2 * parameters.globalPopulationsSize;
     // Convert to 1D array for GPU
     for (int i = 0; i < parameters.nruns; i++) {
         for (int j = 0; j < parameters.popSize; j++) {
@@ -429,7 +434,7 @@ void Data::initLigandAtomPairsForClash() {
     delete[] atomPairIndexes;
 }
 
-Data::Data(std::string file, Batch& batchRef, uint32_t cycle_limit) : batch(batchRef), CYCLE_LIMIT(cycle_limit) {
+Data::Data(std::string file, Batch& batchRef, uint32_t cycle_limit) : batch(batchRef), LOCAL_SIZE(batchRef.localSize), CYCLE_LIMIT(cycle_limit) {
 
     TIMER_START(t_dataPrep);
 
@@ -571,10 +576,11 @@ Data::Data(std::string file, Batch& batchRef, uint32_t cycle_limit) : batch(batc
     convergenceSize = sizeof(cl_uint) * parameters.nruns;
     convergenceFlag = 0;
     convergenceFlagSize = sizeof(cl_uint);
-    popNewIndex = new CL_STRUCT_INT[2];
-    popNewIndexSize = sizeof(CL_STRUCT_INT) * 2;
-    popNewIndex[0] = (CL_STRUCT_INT)0;
-    popNewIndex[1] = parameters.popSize;
+    popNewIndex = new CL_STRUCT_INT[NUM_OF_POPULATION_ENUM];
+    popNewIndexSize = sizeof(CL_STRUCT_INT) * NUM_OF_POPULATION_ENUM;
+    popNewIndex[POPULATION_INDEX_START] = (CL_STRUCT_INT)0;
+    popNewIndex[POPULATION_INDEX_END] = parameters.popSize;
+    popNewIndex[POPULATION_PLACE] = (CL_STRUCT_INT)0;
     initSeed();
     initLigandAtomPairsForClash();
     rngStates = new tyche_i_state[parameters.maxThreads];
@@ -625,7 +631,6 @@ Data::~Data() {
     }
 
     delete[] globalPopulations;
-    delete[] globalPopulationsCopy;
     delete[] ligandAtoms;
     delete[] receptorAtoms;
     delete[] ligandBonds;
@@ -762,7 +767,8 @@ void Data::saveTimersToFile(std::string path) {
     fprintf(fout,"Kernels set args time,%lf\r\n", tot_kernelSetArgs);
     double totalKernelTime = tot_kernelInit + tot_kernelInit2 + tot_kernelInit3 + tot_kernelInitGrid
                             + tot_kernelSyncToModel + tot_kernelPLP
-                            + tot_kernelSort + tot_kernelNormalize
+                            + tot_kernelSortAndNormalize
+                            + tot_kernelFinishStep
                             + tot_kernelCreateNew + tot_kernelCheckConvergence
                             + tot_kernelFinalize;// +...
     fprintf(fout,"Total Kernel run time,%lf\r\n", totalKernelTime);
@@ -772,8 +778,8 @@ void Data::saveTimersToFile(std::string path) {
     fprintf(fout,"kernelInitGrid time,%lf\r\n", tot_kernelInitGrid);
     fprintf(fout,"kernelSyncToModel time,%lf\r\n", tot_kernelSyncToModel);
     fprintf(fout,"kernelPLP time,%lf\r\n", tot_kernelPLP);
-    fprintf(fout,"kernelSort time,%lf\r\n", tot_kernelSort);
-    fprintf(fout,"kernelNormalize time,%lf\r\n", tot_kernelNormalize);
+    fprintf(fout,"kernelSortAndNormalize time,%lf\r\n", tot_kernelSortAndNormalize);
+    fprintf(fout,"kernelFinishStep time,%lf\r\n", tot_kernelFinishStep);
     fprintf(fout,"kernelCreateNew time,%lf\r\n", tot_kernelCreateNew);
     fprintf(fout,"kernelCheckConvergence time,%lf\r\n", tot_kernelCheckConvergence);
     fprintf(fout,"kernelFinalize time,%lf\r\n", tot_kernelFinalize);

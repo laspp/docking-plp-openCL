@@ -21,8 +21,8 @@ const std::vector<std::string> WorkerCL::KernelNames = {
     "kernelInitGrid",
     "kernelSyncToModel",
     "kernelPLP",
-    "kernelSort",
-    "kernelNormalize",
+    "kernelSortAndNormalize",
+    "kernelFinishStep",
     "kernelCreateNew",
     "kernelCheckConvergence",
     "kernelFinalize"
@@ -130,7 +130,6 @@ void WorkerCL::initMemory(Data& data) {
     CHECK_CL_ERROR(cl_rngStates = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.rngStatesSize, data.rngStates, &error));
     CHECK_CL_ERROR(cl_parameters = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, data.parametersSize, &(data.parameters), &error));
     CHECK_CL_ERROR(cl_globalPopulations = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.globalPopulationsSize, data.globalPopulations, &error));
-    CHECK_CL_ERROR(cl_globalPopulationsCopy = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.globalPopulationsCopySize, data.globalPopulationsCopy, &error));
     CHECK_CL_ERROR(cl_ligandAtoms = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.ligandAtomsSize, data.ligandAtoms, &error));
     CHECK_CL_ERROR(cl_receptorAtoms = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.receptorAtomsSize, data.receptorAtoms, &error));
     CHECK_CL_ERROR(cl_ligandBonds = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, data.ligandBondsSize, data.ligandBonds, &error));
@@ -211,17 +210,14 @@ void WorkerCL::kernelSetArgs(Data& data) {
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelPLP], 6, sizeof(cl_mem), (void *)&cl_grid));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelPLP], 7, sizeof(cl_mem), (void *)&cl_ligandAtoms));
 
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSort], 0, sizeof(cl_mem), (void *)&cl_parameters));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSort], 1, sizeof(cl_mem), (void *)&cl_globalPopulations));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSort], 2, sizeof(cl_mem), (void *)&cl_globalPopulationsCopy));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSort], 3, 2 * data.parameters.popMaxSize * sizeof(cl_float), NULL));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSort], 4, 2 * data.parameters.popMaxSize * sizeof(cl_ushort), NULL));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSort], 5, sizeof(cl_mem), (void *)&cl_popNewIndex));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSortAndNormalize], 0, sizeof(cl_mem), (void *)&cl_parameters));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSortAndNormalize], 1, sizeof(cl_mem), (void *)&cl_globalPopulations));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSortAndNormalize], 2, 2 * data.parameters.localScoreArrayLength * sizeof(cl_float), NULL));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSortAndNormalize], 3, 3 * data.parameters.popMaxSize * sizeof(cl_ushort), NULL));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSortAndNormalize], 4, sizeof(cl_mem), (void *)&cl_popNewIndex));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelSortAndNormalize], 5, sizeof(cl_mem), (void *)&cl_bestScore));
 
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelNormalize], 0, sizeof(cl_mem), (void *)&cl_parameters));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelNormalize], 1, sizeof(cl_mem), (void *)&cl_globalPopulations));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelNormalize], 2, 2 * data.LOCAL_SIZE * sizeof(cl_float), NULL));
-    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelNormalize], 3, sizeof(cl_mem), (void *)&cl_bestScore));
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinishStep], 0, sizeof(cl_mem), (void *)&cl_popNewIndex));
 
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelCreateNew], 0, sizeof(cl_mem), (void *)&cl_rngStates));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelCreateNew], 1, sizeof(cl_mem), (void *)&cl_parameters));
@@ -242,7 +238,7 @@ void WorkerCL::kernelSetArgs(Data& data) {
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 3, sizeof(cl_mem), (void *)&cl_dihedralRefData));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 4, sizeof(cl_mem), (void *)&cl_ligandAtomsSmallResult));
     CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 5, sizeof(cl_mem), (void *)&cl_ligandAtoms));
-
+    CHECK_CL_ERROR(error = clSetKernelArg(kernels[kernelFinalize], 6, sizeof(cl_mem), (void *)&cl_popNewIndex));
     
     TIMER_END(data.t_kernelSetArgs, data.tot_kernelSetArgs);
 }
@@ -276,13 +272,13 @@ void WorkerCL::initialStep(Data& data) {
 	ASIGN_SIZE_2D(l_kernelPLP, data.LOCAL_SIZE, 1);
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelPLP], 2, NULL, g_kernelPLP, l_kernelPLP, 0, NULL, NULL), data.t_kernelPLP, data.tot_kernelPLP);
 
-    ASIGN_SIZE_2D(g_kernelSort, data.LOCAL_SIZE, data.parameters.nruns);
-	ASIGN_SIZE_2D(l_kernelSort, data.LOCAL_SIZE, 1);
-    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelSort], 2, NULL, g_kernelSort, l_kernelSort, 0, NULL, NULL), data.t_kernelSort, data.tot_kernelSort);
+    ASIGN_SIZE_2D(g_kernelSortAndNormalize, data.LOCAL_SIZE, data.parameters.nruns);
+	ASIGN_SIZE_2D(l_kernelSortAndNormalize, data.LOCAL_SIZE, 1);
+    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelSortAndNormalize], 2, NULL, g_kernelSortAndNormalize, l_kernelSortAndNormalize, 0, NULL, NULL), data.t_kernelSortAndNormalize, data.tot_kernelSortAndNormalize);
 
-    ASIGN_SIZE_2D(g_kernelNormalize, data.LOCAL_SIZE, data.parameters.nruns);
-	ASIGN_SIZE_2D(l_kernelNormalize, data.LOCAL_SIZE, 1);
-    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelNormalize], 2, NULL, g_kernelNormalize, l_kernelNormalize, 0, NULL, NULL), data.t_kernelNormalize, data.tot_kernelNormalize);
+    g_kernelFinishStep[0] = 1;
+	l_kernelFinishStep[0] = 1;
+    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelFinishStep], 1, NULL, g_kernelFinishStep, l_kernelFinishStep, 0, NULL, NULL), data.t_kernelFinishStep, data.tot_kernelFinishStep);
 
     // Read initial best score (blocking)
     TIME_CL(error = clEnqueueReadBuffer(commandQueue, cl_bestScore, CL_TRUE, 0, data.bestScoreSize, data.bestScore, 0, NULL, NULL), data.t_dataToCPU, data.tot_dataToCPU);
@@ -314,9 +310,9 @@ void WorkerCL::runStep(Data& data) {
     // Same as initialStep (without inits)
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelSyncToModel], 2, NULL, g_kernelSyncToModel, l_kernelSyncToModel, 0, NULL, NULL), data.t_kernelSyncToModel, data.tot_kernelSyncToModel);
     TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelPLP], 2, NULL, g_kernelPLP, l_kernelPLP, 0, NULL, NULL), data.t_kernelPLP, data.tot_kernelPLP);
-    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelSort], 2, NULL, g_kernelSort, l_kernelSort, 0, NULL, NULL), data.t_kernelSort, data.tot_kernelSort);
-    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelNormalize], 2, NULL, g_kernelNormalize, l_kernelNormalize, 0, NULL, NULL), data.t_kernelNormalize, data.tot_kernelNormalize);
-    
+    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelSortAndNormalize], 2, NULL, g_kernelSortAndNormalize, l_kernelSortAndNormalize, 0, NULL, NULL), data.t_kernelSortAndNormalize, data.tot_kernelSortAndNormalize);
+    TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelFinishStep], 1, NULL, g_kernelFinishStep, l_kernelFinishStep, 0, NULL, NULL), data.t_kernelFinishStep, data.tot_kernelFinishStep);
+
     if(data.CYCLE_LIMIT == 0) {
         TIME_CL(error = clEnqueueNDRangeKernel(commandQueue, kernels[kernelCheckConvergence], 1, NULL, g_kernelCheckConvergence, l_kernelCheckConvergence, 0, NULL, NULL), data.t_kernelCheckConvergence, data.tot_kernelCheckConvergence);
     }
@@ -343,7 +339,6 @@ void WorkerCL::releaseMemory() {
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_rngStates));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_parameters));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_globalPopulations));
-    CHECK_CL_ERROR(error = clReleaseMemObject(cl_globalPopulationsCopy));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandAtoms));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_receptorAtoms));
     CHECK_CL_ERROR(error = clReleaseMemObject(cl_ligandBonds));

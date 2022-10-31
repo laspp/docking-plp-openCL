@@ -8,7 +8,7 @@
 __kernel void kernelInit(global ulong* seed, global tyche_i_state* rngStates,
                     constant parametersForGPU* parameters,
                     global AtomGPU* ligandAtoms, global AtomGPU* receptorAtoms,
-                    global float* globalPopulations,
+                    global float* globalPopulationsBase,
                     global LigandAtomPairsForClash* ligandAtomPairsForClash,
                     global DihedralRefDataGPU* dihedralRefData,
                     global BondGPU* ligandBonds) {
@@ -18,6 +18,8 @@ __kernel void kernelInit(global ulong* seed, global tyche_i_state* rngStates,
 
     uint runSize=get_global_size(RUN_ID_2D);
     uint individualSize=get_global_size(INDIVIDUAL_ID_2D);
+
+    global float* globalPopulations = globalPopulationsBase; // initial population place
 
     // 1. SEED Random Number Generator and SAVE state
     if(individualID < parameters->popMaxSize) {

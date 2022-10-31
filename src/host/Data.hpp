@@ -171,7 +171,7 @@ class Data {
 
 public:
 
-    const uint32_t LOCAL_SIZE = 256;
+    const uint32_t LOCAL_SIZE;
     const uint32_t CYCLE_LIMIT;
 
     // Stack:
@@ -184,8 +184,6 @@ public:
     // Allocated:
     CL_STRUCT_FLOAT* globalPopulations;
     uint32_t globalPopulationsSize;
-    CL_STRUCT_FLOAT* globalPopulationsCopy;
-    uint32_t globalPopulationsCopySize;
 
     AtomGPU* ligandAtoms;
     uint32_t ligandAtomsSize;
@@ -246,10 +244,10 @@ public:
     double tot_kernelSyncToModel = 0.0;
     double t_kernelPLP = 0.0;
     double tot_kernelPLP = 0.0;
-    double t_kernelSort = 0.0;
-    double tot_kernelSort = 0.0;
-    double t_kernelNormalize = 0.0;
-    double tot_kernelNormalize = 0.0;
+    double t_kernelSortAndNormalize = 0.0;
+    double tot_kernelSortAndNormalize = 0.0;
+    double t_kernelFinishStep = 0.0;
+    double tot_kernelFinishStep = 0.0;
     double t_kernelCreateNew = 0.0;
     double tot_kernelCreateNew = 0.0;
     double t_kernelCheckConvergence = 0.0;
